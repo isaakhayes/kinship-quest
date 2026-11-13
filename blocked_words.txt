@@ -1,0 +1,2 @@
+# Reserved for the future Never-Ending Story moderation feature.
+# One blocked term per line. This file is not used by the current two-activity prototype.

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101d32">
+  <title>Kinship Quest | Family Game Night</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Kinship Quest home">
+        <span class="brand-mark">K<span>✦</span></span>
+        <span><strong>KINSHIP QUEST</strong><small>MAKE A LITTLE MAGIC TOGETHER</small></span>
+      </a>
+      <div id="connection" class="connection"><i></i><span>Not connected</span></div>
+    </header>
+
+    <section id="lobby" class="screen">
+      <div class="hero">
+        <div class="eyebrow">FAMILY GAME NIGHT, REIMAGINED</div>
+        <h1>One crew.<br><em>Endless possibilities.</em></h1>
+        <p>Dream up a plan, make a few wild choices, and see what your team creates.</p>
+        <div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div>
+      </div>
+      <div class="lobby-grid">
+        <article class="panel join-panel">
+          <div class="panel-icon">✦</div>
+          <h2>Start a new game</h2>
+          <p>Become the host. Invite your crew with one room code.</p>
+          <label for="hostName">Your name</label>
+          <input id="hostName" maxlength="18" placeholder="What should we call you?">
+          <button id="createRoom" class="btn btn-primary">Create a room <span>↗</span></button>
+        </article>
+        <article class="panel join-panel">
+          <div class="panel-icon">⌁</div>
+          <h2>Join the crew</h2>
+          <p>Enter the room code from your host and jump in.</p>
+          <label for="joinName">Your name</label>
+          <input id="joinName" maxlength="18" placeholder="Your name">
+          <label for="roomCode">Room code</label>
+          <input id="roomCode" maxlength="6" placeholder="e.g. 482913" inputmode="numeric">
+          <button id="joinRoom" class="btn btn-secondary">Join the game <span>→</span></button>
+        </article>
+      </div>
+      <p class="lobby-note">No accounts. No scores. Just imagination, teamwork, and a little friendly chaos.</p>
+    </section>
+
+    <section id="game" class="screen hidden">
+      <div class="game-head">
+        <div><div class="eyebrow">YOUR FAMILY GAME ROOM</div><h1 id="roomTitle">The crew is here</h1></div>
+        <div class="room-chip">ROOM <strong id="roomCodeDisplay">------</strong><button id="copyLink" title="Copy invite link">Copy invite</button></div>
+      </div>
+      <div class="game-layout">
+        <aside class="sidebar panel">
+          <div class="side-label">THE CREW <span id="playerCount">1</span></div>
+          <ul id="playerList" class="player-list"></ul>
+          <div class="side-divider"></div>
+          <div class="side-label">TONIGHT'S ACTIVITIES</div>
+          <div class="activity-tag active"><span>✧</span><div><b>Adventure Mission</b><small>Choose your path together</small></div></div>
+          <div class="activity-tag"><span>✎</span><div><b>Draw It or Caption It</b><small>Create something unexpected</small></div></div>
+          <p class="host-note" id="hostNote">The host sets the pace and starts each round.</p>
+          <button id="leaveRoom" class="btn btn-quiet">Leave room</button>
+        </aside>
+
+        <section class="play-area">
+          <div id="waiting" class="panel waiting-panel">
+            <div class="waiting-symbol">✦</div>
+            <div class="eyebrow">THE ADVENTURE STARTS HERE</div>
+            <h2>Gather your people.</h2>
+            <p>Share the room code. When everyone's in, the host can kick things off.</p>
+            <div class="waiting-code" id="waitingCode">------</div>
+            <button id="startGame" class="btn btn-primary host-only">Start the adventure <span>↗</span></button>
+            <p class="waiting-small" id="waitingStatus">Waiting for the host to begin…</p>
+          </div>
+
+          <div id="round" class="panel round-panel hidden">
+            <div class="round-top"><span class="round-kicker" id="roundKicker">MISSION 01</span><span id="roundType" class="round-type">TEAM DECISION</span></div>
+            <div class="progress-track"><div id="progressBar"></div></div>
+            <div class="eyebrow" id="roundEyebrow">THE WORLD IS YOURS TO SHAPE</div>
+            <h2 id="promptTitle">A message from the future…</h2>
+            <p id="promptBody" class="prompt-body"></p>
+            <div id="missionChoices" class="choice-grid"></div>
+            <div id="drawArea" class="draw-area hidden">
+              <div class="draw-tabs"><button id="tabDraw" class="selected">Draw it</button><button id="tabCaption">Caption it</button></div>
+              <div id="drawingPane">
+                <canvas id="drawingCanvas" width="600" height="360"></canvas>
+                <div class="canvas-tools"><button id="clearCanvas" class="btn btn-quiet">Clear</button><label>Ink <input id="inkColor" type="color" value="#14233c"></label><label>Size <input id="inkSize" type="range" min="2" max="18" value="6"></label></div>
+              </div>
+              <div id="captionPane" class="hidden"><textarea id="captionInput" maxlength="180" placeholder="Give it a caption…"></textarea></div>
+              <button id="submitCreation" class="btn btn-primary">Send my creation <span>↗</span></button>
+            </div>
+            <div id="submissionStatus" class="submission-status"></div>
+            <div id="revealArea" class="reveal-area hidden"><h3>The crew made this</h3><div id="revealGrid" class="reveal-grid"></div></div>
+            <div class="host-controls host-only">
+              <button id="revealBtn" class="btn btn-secondary">Reveal creations</button>
+              <button id="nextRound" class="btn btn-primary">Next round <span>→</span></button>
+            </div>
+          </div>
+          <div id="finished" class="panel waiting-panel hidden">
+            <div class="waiting-symbol">✧</div><div class="eyebrow">THAT'S A WRAP</div>
+            <h2>Look what we made together.</h2><p>Good stories are better when everybody adds something.</p>
+            <button id="playAgain" class="btn btn-primary host-only">Play another round</button>
+          </div>
+        </section>
+      </div>
+    </section>
+    <footer>BUILT FOR BIG IMAGINATIONS & GOOD COMPANY <span>✦</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
