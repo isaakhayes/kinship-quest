@@ -4,7 +4,7 @@
 import {CLASSES} from '../js/data/heroes.js';
 import {spriteURL,beastURL,backdropURL} from '../js/sprites.js';
 const o=document.getElementById('o');
-CLASSES.forEach((c,i)=>{o.innerHTML+=`<img src="${spriteURL({cls:c.id,skin:(i*2)%6,hair:i%6,outfit:i},5)}" width="160">`});
+CLASSES.forEach((c,i)=>{o.innerHTML+=`<img src="${spriteURL({cls:c.id,skin:(i*2)%6,hair:i%6,outfit:i},5)}" width="192">`});
 for(let i=1;i<5;i++)o.innerHTML+=`<img src="${beastURL(i,6)}" width="144">`;
 ['skycity','rail','market','weave','hall'].forEach(t=>o.innerHTML+=`<img src="${backdropURL(t,2)}" width="480">`);
 </script>

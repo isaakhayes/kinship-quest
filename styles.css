@@ -152,12 +152,12 @@ button:disabled { cursor: not-allowed; }
 /* compact banner while players are working so the activity stays on screen */
 .play:not([data-sub=read]):not([data-sub=result]) .banner > img { aspect-ratio: 160 / 30; object-fit: cover; object-position: center bottom; }
 .play:not([data-sub=read]):not([data-sub=result]) .cast { bottom: 2px; }
-.play:not([data-sub=read]):not([data-sub=result]) .actor img { width: clamp(26px, 5vw, 38px); }
+.play:not([data-sub=read]):not([data-sub=result]) .actor img { width: clamp(34px, 6vw, 54px); }
 .play:not([data-sub=read]):not([data-sub=result]) .actor em { top: -22px; }
 .banner.small > img { aspect-ratio: 160 / 40; object-fit: cover; }
 .cast { position: absolute; left: 0; right: 0; bottom: 4px; display: flex; justify-content: center; align-items: flex-end; gap: clamp(2px, 1.5vw, 14px); padding: 0 6px; }
 .actor { text-align: center; position: relative; } .actor small { display: block; font-size: 17px; background: rgba(13, 10, 31, .8); padding: 0 4px; margin-top: 2px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.actor img { width: clamp(30px, 7vw, 56px); height: auto; }
+.actor img { width: clamp(44px, 10vw, 92px); height: auto; }
 .actor.spot small { background: var(--yellow); color: var(--ink); }
 .actor em { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); font: 7px 'Press Start 2P'; background: var(--yellow); color: var(--ink); padding: 4px 5px; white-space: nowrap; font-style: normal; animation: bob 1s steps(2) infinite; }
 .spr.idle { animation: bob 1.6s steps(2) infinite; } .spr.hop { animation: hop .8s steps(2) infinite; }
@@ -258,3 +258,6 @@ button:disabled { cursor: not-allowed; }
 .dice3 .die { width: 30px; height: 30px; line-height: 30px; font-size: 14px; }
 .actor.ayo small { color: var(--cyan, #2de2e6); }
 .dice3 .die,.die.set{color:#0d0a1f;background:#fff7e0;text-align:center;font-family:'Press Start 2P',monospace}
+
+.quest.soon { position: relative; opacity: .6; filter: saturate(.55); cursor: default; }
+.quest.soon .badge { position: absolute; top: 8px; right: 8px; font: 8px 'Press Start 2P'; background: var(--pink); color: var(--ink); padding: 6px 8px; z-index: 2; }

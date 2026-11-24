@@ -95,31 +95,80 @@ DETAILS.healer = (g) => {
   [[12, 25], [18, 27], [14, 31], [19, 24], [16, 29]].forEach(([x, y]) => { px(g, x, y, '#5fe36b'); px(g, x + 1, y, '#a9ffa0'); });
 };
 
+// ---- hero builder: chibi "hi-bit" style on a 48x66 grid; weapons drawn on the old 32x48 grid and scaled 1.5x ----
+function hairBack2(g, st, h, hl, acc) {
+  if (st === 0) { ell(g, 24, 13, 17, 15, h); ell(g, 18, 6, 6, 3, hl); }
+  if (st === 1) for (let i = 0; i < 5; i++) { const xl = 10 + i * 2, xr = 37 - i * 2; rect(g, xl - (i % 2), 14, 3, 18 - i * 2, h); rect(g, xr - (i % 2), 14, 3, 18 - i * 2, h); px(g, xl - (i % 2) + 1, 26 - i, acc); px(g, xr - (i % 2) + 1, 26 - i, acc); }
+  if (st === 2) for (let i = 0; i < 9; i++) { const x = 11 + i * 3; rect(g, x, 12, 2, 20 - (i % 3) * 3, h); px(g, x, 28 - (i % 3) * 3, acc); px(g, x + 1, 24 - (i % 2) * 3, hl); }
+  if (st === 4) { ell(g, 10, 7, 7, 7, h); ell(g, 38, 7, 7, 7, h); ell(g, 8, 5, 2, 2, hl); ell(g, 36, 5, 2, 2, hl); }
+}
+function hairFront2(g, st, h, hl, acc, wrap) {
+  if (st === 0) { ell(g, 24, 10, 14, 6, h); for (let i = 0; i < 6; i++) px(g, 14 + i * 4, 6 + (i % 2), hl); }
+  if (st === 1 || st === 2) { ell(g, 24, 10, 13, 6, h); rect(g, 12, 10, 24, 3, h); px(g, 17, 7, hl); px(g, 21, 6, hl); px(g, 27, 6, hl); px(g, 31, 7, hl); }
+  if (st === 3) { ell(g, 24, 10, 13, 6, wrap); rect(g, 11, 11, 26, 3, wrap); ell(g, 35, 5, 6, 5, wrap); ell(g, 34, 4, 2, 2, hl); for (let x = 13; x < 36; x += 4) { rect(g, x, 7, 2, 6, acc); } rect(g, 11, 13, 26, 1, shade(wrap, .6)); }
+  if (st === 4) { ell(g, 24, 10, 13, 5, h); px(g, 20, 7, hl); px(g, 28, 7, hl); }
+  if (st === 5) { ell(g, 24, 10, 12, 5, h); rect(g, 12, 11, 24, 2, h); for (let x = 14; x < 34; x += 2) px(g, x, 12, CYAN); px(g, 19, 8, hl); px(g, 29, 8, hl); rect(g, 12, 15, 2, 3, h); rect(g, 34, 15, 2, 3, h); }
+}
+
 export function spriteURL(hero, scale = 3) {
-  const key = ['h', hero.cls, hero.skin, hero.hair || 0, hero.outfit, scale].join('|');
+  const key = ['h2', hero.cls, hero.skin, hero.hair || 0, hero.outfit, scale].join('|');
   if (cache.has(key)) return cache.get(key);
-  const o = OUTFITS[hero.outfit % OUTFITS.length], skin = SKINS[hero.skin % SKINS.length], skin2 = shade(skin, .78);
-  const hair = '#17101f', O = shade(o, .68), pants = '#2a2250';
-  const g = grid(W, H);
-  hairBack(g, hero.hair || 0, hair, GOLD);
-  rect(g, 11, 35, 4, 10, pants); rect(g, 17, 35, 4, 10, pants); rect(g, 10, 44, 5, 3, '#4a2e1a'); rect(g, 17, 44, 5, 3, '#4a2e1a'); rect(g, 10, 44, 5, 1, '#6a4220'); rect(g, 17, 44, 5, 1, '#6a4220');
-  rect(g, 10, 21, 12, 14, o); rect(g, 19, 22, 3, 12, shade(o, .85)); rect(g, 10, 32, 12, 2, O); rect(g, 15, 32, 2, 2, GOLD);
-  rect(g, 7, 22, 3, 11, o); rect(g, 22, 22, 3, 11, shade(o, .85)); ell(g, 8.5, 34, 1.6, 1.6, skin); ell(g, 23.5, 34, 1.6, 1.6, skin);
-  for (let x = 11; x < 21; x += 2) px(g, x, 22, GOLD);
-  px(g, 8, 25, CYAN); px(g, 8, 27, CYAN); px(g, 23, 26, CYAN); px(g, 23, 28, CYAN);
-  rect(g, 14, 18, 4, 4, skin2); ell(g, 16, 12, 6, 7, skin);
-  rect(g, 13, 12, 2, 2, INK); rect(g, 18, 12, 2, 2, INK); px(g, 13, 12, '#fff'); px(g, 18, 12, '#fff');
-  px(g, 14, 17, '#7a2a2a'); rect(g, 15, 18, 3, 1, '#7a2a2a'); px(g, 18, 17, '#7a2a2a'); px(g, 12, 15, shade(skin, .9)); px(g, 19, 15, shade(skin, .9));
-  hairFront(g, hero.hair || 0, hair, GOLD, shade(o, 1.1));
-  (DETAILS[hero.cls] || DETAILS.keeper)(g, { acc: GOLD, o });
+  const o = OUTFITS[hero.outfit % OUTFITS.length], skin = SKINS[hero.skin % SKINS.length];
+  const sk2 = shade(skin, .74), sk3 = shade(skin, 1.18), hair = '#1a1226', hl = '#4a3a6a';
+  const oL = shade(o, 1.25), oD = shade(o, .7), oDD = shade(o, .5), pants = '#2a2250', pantsL = '#3a3270';
+  const g = grid(48, 66);
+  // hair behind
+  hairBack2(g, hero.hair || 0, hair, hl, GOLD);
+  // legs and boots
+  rect(g, 17, 50, 6, 10, pants); rect(g, 25, 50, 6, 10, pants); rect(g, 17, 50, 2, 10, pantsL); rect(g, 25, 50, 2, 10, pantsL);
+  rect(g, 15, 59, 9, 5, '#4a2e1a'); rect(g, 24, 59, 9, 5, '#4a2e1a'); rect(g, 15, 59, 9, 2, '#7a4a28'); rect(g, 24, 59, 9, 2, '#7a4a28'); rect(g, 15, 63, 9, 1, '#2a1a0e'); rect(g, 24, 63, 9, 1, '#2a1a0e'); px(g, 19, 60, GOLD); px(g, 28, 60, GOLD);
+  // arms and torso
+  rect(g, 11, 33, 5, 14, o); rect(g, 11, 33, 2, 14, oL); rect(g, 32, 33, 5, 14, oD); rect(g, 11, 43, 5, 1, oDD); rect(g, 32, 43, 5, 1, oDD);
+  ell(g, 13.5, 48, 2.4, 2.4, skin); ell(g, 34.5, 48, 2.4, 2.4, sk2); px(g, 12, 47, sk3);
+  rect(g, 15, 31, 18, 19, o); rect(g, 15, 31, 4, 19, oL); rect(g, 29, 31, 4, 19, oD); rect(g, 15, 43, 18, 1, oD);
+  rect(g, 15, 47, 18, 3, oDD); rect(g, 15, 47, 18, 1, shade(o, .6)); rect(g, 22, 46, 4, 4, GOLD); rect(g, 23, 47, 2, 2, '#b8870a');
+  for (let x = 17; x < 31; x += 3) { px(g, x, 33, GOLD); px(g, x + 1, 33, GOLD); }
+  for (let y = 36; y < 44; y += 3) { px(g, 17, y, CYAN); px(g, 30, y + 1, CYAN); px(g, 18, y, CYAN); }
+  px(g, 21, 38, oL); px(g, 26, 40, oL); px(g, 23, 36, oL);
+  // neck, ears, head
+  rect(g, 21, 28, 6, 5, sk2);
+  ell(g, 11.5, 20, 2.2, 3, skin); ell(g, 36.5, 20, 2.2, 3, sk2); px(g, 11, 20, sk2);
+  ell(g, 24, 19, 12, 11.5, skin);
+  // face shading: right side and chin
+  for (let y = 8; y < 31; y++) for (let x = 33; x < 37; x++) if (g[y][x] === skin) g[y][x] = sk2;
+  for (let x = 17; x < 31; x++) if (g[29]?.[x] === skin) g[29][x] = sk2;
+  px(g, 17, 14, sk3); px(g, 18, 13, sk3);
+  // eyes: sclera, iris, pupil, sparkle
+  [16, 28].forEach(x => {
+    rect(g, x, 17, 5, 6, '#ffffff'); rect(g, x + 1, 18, 3, 5, '#3a1e0a'); rect(g, x + 2, 19, 2, 3, INK);
+    px(g, x + 1, 18, '#ffffff'); px(g, x + 2, 18, '#ffffff'); px(g, x + 3, 22, '#ffd9a0'); rect(g, x, 16, 5, 1, INK);
+  });
+  // brows, nose, mouth, blush
+  rect(g, 16, 14, 5, 1, hair); px(g, 15, 15, hair); rect(g, 28, 14, 5, 1, hair); px(g, 33, 15, hair);
+  px(g, 23, 24, sk2); px(g, 24, 25, sk2); px(g, 22, 25, sk3);
+  rect(g, 20, 27, 8, 1, '#5a1a1a'); px(g, 19, 26, '#5a1a1a'); px(g, 28, 26, '#5a1a1a'); rect(g, 21, 28, 6, 1, '#c24a4a'); rect(g, 22, 27, 4, 1, '#ffffff');
+  rect(g, 14, 24, 3, 2, '#ff8a8a'); rect(g, 31, 24, 3, 2, '#e07070');
+  hairFront2(g, hero.hair || 0, hair, hl, GOLD, shade(o, 1.1));
+  // weapon layer (32x48 → x1.5)
+  const wg = grid(32, 48); (DETAILS[hero.cls] || DETAILS.keeper)(wg, { acc: GOLD, o });
+  const wl = grid(48, 66);
+  for (let y = 0; y < 66; y++) for (let x = 0; x < 48; x++) { const c = wg[Math.floor((y + 4) / 1.5)]?.[Math.floor(x / 1.5)]; if (c) wl[y][x] = c; }
+  for (let y = 0; y < 66; y++) for (let x = 0; x < 48; x++) if (wl[y][x]) g[y][x] = wl[y][x];
   outline(g);
+  // glow around bright weapon colors
+  const glowCols = { [CYAN]: 'rgba(45,226,230,.35)', '#5fe36b': 'rgba(95,227,107,.35)', '#a9f6ff': 'rgba(169,246,255,.3)', '#ffe27a': 'rgba(255,226,122,.35)' };
+  const add = [];
+  for (let y = 0; y < 66; y++) for (let x = 0; x < 48; x++) if (!g[y][x]) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) { const n = wl[y + dy]?.[x + dx]; if (n && glowCols[n]) { add.push([x, y, glowCols[n]]); break; } }
+  add.forEach(([x, y, c]) => g[y][x] = c);
+  // ground shadow
+  for (let x = 12; x < 36; x++) for (let y = 64; y < 66; y++) if (!g[y][x]) g[y][x] = 'rgba(0,0,0,.35)';
   const url = toURL(g, scale);
   cache.set(key, url);
   return url;
 }
 
 export const spriteHTML = (hero, w = 48, cls = '') =>
-  `<img class="spr ${cls}" src="${spriteURL(hero, 3)}" width="${w}" height="${Math.round(w * H / W)}" alt="">`;
+  `<img class="spr ${cls}" src="${spriteURL(hero, 3)}" width="${w}" height="${Math.round(w * 66 / 48)}" alt="">`;
 
 // ---- glitch beasts ----
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

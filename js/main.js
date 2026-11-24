@@ -1,7 +1,7 @@
 // Kinship Quest client: screens, input, and sync. Everyone renders from the host's state snapshot.
 import { connect, LOCAL } from './net.js';
 import { Host } from './host.js';
-import { QUESTS, QUEST_LIST, CHAPTER_LENGTHS, CLOCK_LENGTHS } from './data/quests.js';
+import { QUESTS, QUEST_LIST, CHAPTER_LENGTHS, CLOCK_LENGTHS, COMING_SOON } from './data/quests.js';
 import { CLASSES, CLASS, SKINS, OUTFITS, HAIRS, TRAITS, VALUES, VALUE_NAMES, rollHero } from './data/heroes.js';
 import { spriteHTML, spriteURL, backdropURL, beastURL } from './sprites.js';
 import { sfx, isMuted, setMuted } from './audio.js';
@@ -77,7 +77,7 @@ const heart = on => `<svg class="heart ${on ? '' : 'off'}" viewBox="0 0 7 6" sha
 const hearts = n => Array.from({ length: 5 }, (_, i) => heart(i < n)).join('');
 const btn = (label, attrs = '', cls = 'y') => `<button class="btn ${cls}" ${attrs}>${label}</button>`;
 const fmtTime = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-const crewStrip = flags => `<div class="strip">${S.order.map(id => { const p = S.players[id]; return `<div class="chip ${flags[id] ? 'done' : ''} ${p.online ? '' : 'away'}">${spriteHTML(p.hero, 28)}<small>${esc(p.name)}</small><i></i></div>`; }).join('')}</div>`;
+const crewStrip = flags => `<div class="strip">${S.order.map(id => { const p = S.players[id]; return `<div class="chip ${flags[id] ? 'done' : ''} ${p.online ? '' : 'away'}">${spriteHTML(p.hero, 34)}<small>${esc(p.name)}</small><i></i></div>`; }).join('')}</div>`;
 const traitPips = (cls, big) => TRAITS.map(t => { const v = CLASS[cls].traits[t] || 0; return `<div class="trait"><span>${t}</span><b>${'■'.repeat(v)}<u>${'■'.repeat(3 - v)}</u></b></div>`; }).join('');
 function lessonCard(sc) {
   if (!sc.lesson) return '';
@@ -124,7 +124,7 @@ function lobbyScreen() {
   return `<section class="lobby">
     <div class="box builder">
       <h2>BUILD YOUR HERO</h2>
-      <div class="preview"><div class="stage-floor">${spriteHTML(B, 120, 'idle')}</div>
+      <div class="preview"><div class="stage-floor">${spriteHTML(B, 168, 'idle')}</div>
         <div class="who"><b>${esc(p.name)}</b> THE ${cls.name}<p class="catch">${esc(B.catch)}</p><p class="quirk">QUIRK: ${esc(B.quirk)}</p></div></div>
       <div class="label">CHOOSE A CLASS</div>
       <div class="classes">${CLASSES.map(c => { const t = taken.includes(c.id); return `<button class="cls ${B.cls === c.id ? 'sel' : ''}" ${t ? 'disabled' : ''} data-act="cls" data-v="${c.id}">${spriteHTML({ cls: c.id, skin: B.skin, hair: B.hair, outfit: B.outfit }, 40)}<small>${t ? 'TAKEN' : c.name}</small></button>`; }).join('')}</div>
@@ -136,7 +136,7 @@ function lobbyScreen() {
       <div class="box pad room"><div class="label">ROOM CODE</div><div class="bigcode">${esc(room)}</div>
         <div class="btnrow">${btn('COPY INVITE LINK', 'data-act="copy"', 'c small')}</div></div>
       <div class="box pad crew"><div class="label">THE CREW (${S.order.length}/8)</div>
-        ${S.order.map(id => { const q = S.players[id]; return `<div class="member ${q.online ? '' : 'away'}">${spriteHTML(q.hero, 40)}<div><b>${esc(q.name)}${id === S.hostId ? ' *' : ''}</b><small>${CLASS[q.hero.cls].name}${q.online ? '' : ' (AWAY)'}</small></div><span class="tag ${q.ready ? 'ok' : ''}">${q.ready ? 'READY' : 'BUILDING'}</span></div>`; }).join('')}
+        ${S.order.map(id => { const q = S.players[id]; return `<div class="member ${q.online ? '' : 'away'}">${spriteHTML(q.hero, 52)}<div><b>${esc(q.name)}${id === S.hostId ? ' *' : ''}</b><small>${CLASS[q.hero.cls].name}${q.online ? '' : ' (AWAY)'}</small></div><span class="tag ${q.ready ? 'ok' : ''}">${q.ready ? 'READY' : 'BUILDING'}</span></div>`; }).join('')}
         <p class="note">* HOST</p></div>
       ${isHost ? `<div class="startbox">${btn(everyoneReady ? 'CHOOSE A QUEST' : 'WAITING FOR READY...', 'data-act="pick"' + (everyoneReady ? '' : ' disabled'), 'y big')}<small>${everyoneReady ? 'Everyone is ready.' : 'Everyone needs to press I AM READY.'}</small></div>` : '<div class="note center">WAITING FOR THE HOST TO START...</div>'}
     </div></section>`;
@@ -148,7 +148,7 @@ function pickScreen() {
   return `<section class="pick">
     <h2 class="shead">CHOOSE YOUR QUEST</h2>
     <div class="quests">${QUEST_LIST.map(qq => `<button class="quest box ${sel.quest === qq.id ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="sel" data-q="${qq.id}">
-      <img class="qimg" src="${backdropURL(qq.theme, 3)}" alt=""><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></button>`).join('')}</div>
+      <img class="qimg" src="${backdropURL(qq.theme, 3)}" alt=""><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></button>`).join('')}${COMING_SOON.map(qq => `<div class="quest box soon"><img class="qimg" src="${backdropURL(qq.theme, 7)}" alt=""><span class="badge">COMING SOON</span><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></div>`).join('')}</div>
     <div class="box pad opts">
       <div><div class="label">HOW TO MEASURE LENGTH</div><div class="seg">
         <button class="${!clock ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mode" data-v="chapters">BY CHAPTERS</button>
@@ -159,7 +159,7 @@ function pickScreen() {
         ${clock ? '<p class="note">The story speeds up near the end so the final battle always happens. In chapter mode it always happens too.</p>' : ''}</div>
       <div><div class="label">EACH GAME IS DIFFERENT</div><p class="note">Surprise guests and twists are picked at random every time you play.</p></div>
     </div>
-    <div class="box pad crewrow"><div class="label">CREW</div><div class="heroes">${S.order.map(id => { const q = S.players[id]; return `<div class="hh">${spriteHTML(q.hero, 40, 'idle')}<small>${esc(q.name)}</small></div>`; }).join('')}</div>
+    <div class="box pad crewrow"><div class="label">CREW</div><div class="heroes">${S.order.map(id => { const q = S.players[id]; return `<div class="hh">${spriteHTML(q.hero, 52, 'idle')}<small>${esc(q.name)}</small></div>`; }).join('')}</div>
       ${S.order.length <= 3 ? '<p class="note">With a small crew, AYO the courier joins your team!</p>' : ''}</div>
     ${isHost ? `<div class="startbox">${btn('BEGIN: ' + esc(q.short), 'data-act="begin"', 'y big')}<small>${lenName}</small>${btn('BACK TO HEROES', 'data-act="tolobby"', 'p small')}</div>` : '<div class="note center">THE HOST IS CHOOSING THE QUEST...</div>'}
   </section>`;
@@ -178,7 +178,7 @@ function playScreen() {
     ui.sceneKey = sceneKey; ui.zoneKey = ''; ui.fav = null;
     $('#screen').innerHTML = `<section class="play">
       <div class="banner"><img src="${backdropURL(sc.th || q.theme, S.turn)}" alt="">
-        <div class="cast">${S.companion ? `<div class="actor ayo">${spriteHTML(S.companion.hero, 56, 'idle')}<small>AYO</small></div>` : ''}${S.order.map(id => { const p = S.players[id]; return `<div class="actor ${id === S.spot ? 'spot' : ''}" id="a-${id}">${id === S.spot ? '<em>SPOTLIGHT</em>' : ''}${spriteHTML(p.hero, 56, id === S.spot ? 'hop' : 'idle')}<small>${esc(p.name)}</small></div>`; }).join('')}</div></div>
+        <div class="cast">${S.companion ? `<div class="actor ayo">${spriteHTML(S.companion.hero, 92, 'idle')}<small>AYO</small></div>` : ''}${S.order.map(id => { const p = S.players[id]; return `<div class="actor ${id === S.spot ? 'spot' : ''}" id="a-${id}">${id === S.spot ? '<em>SPOTLIGHT</em>' : ''}${spriteHTML(p.hero, 56, id === S.spot ? 'hop' : 'idle')}<small>${esc(p.name)}</small></div>`; }).join('')}</div></div>
       <div class="dialog box" id="dialog"><div class="speaker">${esc(sc.title)}</div><p id="narr"></p><span class="more">▼</span></div>
       <div id="inter"></div>
       <div id="hostbar"></div>
@@ -287,7 +287,7 @@ function swarmHTML(sc) {
   const r = S.roll, pw = id => !S.players[id].momentUsed;
   const beasts = Math.min(20, 8 + 3 * S.order.length);
   const rows = S.order.map(id => { const q = S.players[id], rr = r && r.rolls.find(x => x.pid === id);
-    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 40)}<div class="rn"><b>${esc(q.name)}</b><small>${CLASS[q.hero.cls].power} ${pw(id) ? '<em>SAVED +4</em>' : '<em class="spent">SPENT</em>'}</small></div>
+    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 52)}<div class="rn"><b>${esc(q.name)}</b><small>${CLASS[q.hero.cls].power} ${pw(id) ? '<em>SAVED +4</em>' : '<em class="spent">SPENT</em>'}</small></div>
       <div class="dice3">${rr ? rr.dice.map(d => `<span class="die set">${d}</span>`).join('') : '<span class="die">?</span><span class="die">?</span><span class="die">?</span>'}</div>
       <div class="bon show">${rr ? `<b>${rr.hits} HITS</b>` : ''}</div></div>`; }).join('');
   const allies = r ? r.allyHits / 2 : 0;
@@ -304,7 +304,7 @@ function rollHTML(sc) {
   const rows = S.order.map(id => {
     const q = S.players[id], tb = CLASS[q.hero.cls].traits[ch.trait] || 0;
     const rr = r && r.rolls.find(x => x.pid === id);
-    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 40)}<div class="rn"><b>${esc(q.name)}</b><small>${ch.trait} +${tb}${q.moment ? ' <em>POWER READY</em>' : ''}${q.momentUsed && !(r && r.used.includes(id)) ? ' <em class="spent">POWER SPENT</em>' : ''}</small></div>
+    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 52)}<div class="rn"><b>${esc(q.name)}</b><small>${ch.trait} +${tb}${q.moment ? ' <em>POWER READY</em>' : ''}${q.momentUsed && !(r && r.used.includes(id)) ? ' <em class="spent">POWER SPENT</em>' : ''}</small></div>
       <div class="die" data-d="${rr ? rr.d : 0}">${rr ? '?' : '?'}</div>
       <div class="bon">${rr ? `<span>${rr.tb ? '+' + rr.tb + ' TRAIT' : ''}</span><span>${rr.bonus ? '+' + rr.bonus + ' TEAM' : ''}</span><b data-t="${rr.total}">=${rr.total}</b>` : ''}</div></div>`;
   }).join('');
@@ -356,7 +356,7 @@ function endScreen() {
     <div class="box pad endbox ${e.kind}"><div class="label">QUEST COMPLETE</div><h2>${esc(sc.title)}</h2><p>${esc(fill(sc.t))}</p>
       <div class="hearts">${hearts(S.spirit)}<span>CREW SPIRIT</span></div>
       ${S.items.length ? `<div class="items">ITEMS: ${S.items.map(i => `<span>${esc(i)}</span>`).join('')}</div>` : ''}</div>
-    <div class="box pad podium"><div class="label">THE HEROES</div><div class="heroes">${S.order.map(id => { const p = S.players[id]; return `<div class="hh big">${spriteHTML(p.hero, 72, 'hop')}<b>${esc(p.name)}</b><small>THE ${CLASS[p.hero.cls].name}</small>${(S.awards?.[id] || []).map(a => `<span class="award">${a}</span>`).join('')}</div>`; }).join('')}</div></div>
+    <div class="box pad podium"><div class="label">THE HEROES</div><div class="heroes">${S.order.map(id => { const p = S.players[id]; return `<div class="hh big">${spriteHTML(p.hero, 100, 'hop')}<b>${esc(p.name)}</b><small>THE ${CLASS[p.hero.cls].name}</small>${(S.awards?.[id] || []).map(a => `<span class="award">${a}</span>`).join('')}</div>`; }).join('')}</div></div>
     ${isHost ? `<div class="startbox">${btn('PLAY ANOTHER QUEST', 'data-act="pick"', 'y big')}${btn('NEW HEROES', 'data-act="tolobby"', 'c small')}</div>` : '<div class="note center">WAITING FOR THE HOST...</div>'}</section>`;
 }
 
