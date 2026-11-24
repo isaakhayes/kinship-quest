@@ -1,10 +1,12 @@
 // Host-authoritative game engine. The host browser owns the truth and broadcasts a full
 // state snapshot after every change. Everyone else sends small "act" messages.
 import { QUESTS } from './data/quests.js';
-import { CLASS, CLASSES, CHAOS, LESSON_TOPICS, rollHero, validHero } from './data/heroes.js';
+import { CLASS, CLASSES, CHAOS, rollHero, validHero } from './data/heroes.js';
 
 const pick = a => a[Math.floor(Math.random() * a.length)];
-const SECS = { draw: 90, caption: 60, roleplay: 60, charades: 75, riddle: 90, trivia: 30 };
+const SECS = { draw: 90, caption: 60, roleplay: 60, charades: 75, riddle: 90, trivia: 30, math: 75, fight: 45, sigil: 75, swarm: 0 };
+const QUIZ = ['trivia', 'math', 'fight'];
+const AYO = { id: 'ayo', name: 'AYO', hero: { cls: 'runner', skin: 3, hair: 2, outfit: 4, quirk: '', catch: '' } };
 const JUDGE_SECS = 25;
 const MAX_PLAYERS = CLASSES.length;
 const OFFLINE_MS = 16000;
@@ -37,9 +39,9 @@ export class Host {
   constructor(room, hostId, hostName, send, onChange, saved, blocked = []) {
     this.send = send; this.onChange = onChange; this.blocked = blocked; this.priv = {};
     this.G = saved || {
-      room, hostId, phase: 'lobby', players: {}, order: [], sel: { quest: 'lighthouse', len: 2 },
+      room, hostId, phase: 'lobby', players: {}, order: [], sel: { quest: 'silentdrum', mode: 'chapters', len: 2, mins: 30 },
       quest: null, len: 2, sceneId: null, sub: null, turn: 0, spot: null, spirit: 4, coins: null, items: [], visited: 0,
-      dials: { silly: false, lesson: false, topics: [...LESSON_TOPICS], slow: false },
+      dials: { silly: false, slow: false }, clockEnd: 0, rushed: false, companion: null, fight: null, sigil: null, lastWord: null,
       deadline: 0, dur: 0, prompt: null, votes: {}, vres: null, subs: {}, shown: null, favs: {}, winners: null,
       solved: {}, guesses: [], answers: {}, tres: null, roll: null, chaos: null, hint: false, hintText: null, reveal: null,
       stats: {}, awards: null, ending: null, seq: 0
@@ -101,7 +103,7 @@ export class Host {
       if (!G.order.includes(m.pid)) G.order.push(m.pid);
       if (G.phase !== 'lobby') p.ready = true;
     } else { p.lastSeen = Date.now(); if (m.name) p.name = this.clean(m.name, 14) || p.name; }
-    if (G.phase === 'play' && G.sub === 'work' && this.scene().ch.kind === 'charades' && m.pid === G.spot && this.priv.secret)
+    if (G.phase === 'play' && G.sub === 'work' && ['charades', 'sigil'].includes(this.scene().ch.kind) && m.pid === G.spot && this.priv.secret)
       this.send({ t: 'secret', to: m.pid, text: this.priv.secret.t, sc: G.sceneId });
     this.broadcast();
   }
@@ -112,7 +114,7 @@ export class Host {
       case 'hero': {
         if (G.phase !== 'lobby' || !validHero(m.hero)) return;
         if (Object.values(G.players).some(q => q.id !== pid && q.hero.cls === m.hero.cls)) return;
-        p.hero = { cls: m.hero.cls, skin: m.hero.skin, outfit: m.hero.outfit, quirk: String(m.hero.quirk).slice(0, 60), catch: String(m.hero.catch).slice(0, 80) };
+        p.hero = { cls: m.hero.cls, skin: m.hero.skin, hair: m.hero.hair, outfit: m.hero.outfit, quirk: String(m.hero.quirk).slice(0, 60), catch: String(m.hero.catch).slice(0, 80) };
         p.ready = false; break;
       }
       case 'ready': if (G.phase === 'lobby') p.ready = !!m.v; break;
@@ -127,12 +129,14 @@ export class Host {
       case 'submit': {
         if (G.sub !== 'work') return;
         const k = this.scene().ch.kind;
-        if (!['draw', 'caption', 'roleplay'].includes(k) || G.subs[pid]) return;
+        if (k === 'sigil' && pid !== G.spot) return;
+        if (!['draw', 'caption', 'roleplay', 'sigil'].includes(k) || G.subs[pid]) return;
         let data = m.data;
-        if (k === 'draw') { if (typeof data !== 'string' || !data.startsWith('data:image/png;base64,') || data.length > 60000) return; }
+        if (k === 'draw' || k === 'sigil') { if (typeof data !== 'string' || !data.startsWith('data:image/png;base64,') || data.length > 60000) return; }
         else { data = this.clean(data, k === 'caption' ? 90 : 120); if (!data) return; }
-        (this.priv.subs ||= {})[pid] = { kind: k === 'draw' ? 'img' : 'text', data };
+        (this.priv.subs ||= {})[pid] = { kind: k === 'draw' || k === 'sigil' ? 'img' : 'text', data };
         G.subs[pid] = true; G.stats[pid].subs++;
+        if (k === 'sigil') G.sigil = data;
         this.broadcast(); this.checkWork(); return;
       }
       case 'guess': {
@@ -147,7 +151,8 @@ export class Host {
         this.broadcast(); this.checkWork(); return;
       }
       case 'ans': {
-        if (G.sub !== 'work' || this.scene().ch.kind !== 'trivia' || G.answers[pid]) return;
+        const ak = this.scene().ch.kind;
+        if (G.sub !== 'work' || ![...QUIZ, 'sigil'].includes(ak) || G.answers[pid] || (ak === 'sigil' && (pid === G.spot || !G.sigil))) return;
         (this.priv.ans ||= {})[pid] = m.i; G.answers[pid] = true;
         this.broadcast(); this.checkWork(); return;
       }
@@ -169,7 +174,7 @@ export class Host {
   hostCmd(m) {
     const G = this.G;
     switch (m.cmd) {
-      case 'select': if (G.phase === 'pick' && QUESTS[m.quest]) { G.sel = { quest: m.quest, len: [1, 2, 3].includes(m.len) ? m.len : 2 }; } break;
+      case 'select': if (G.phase === 'pick' && QUESTS[m.quest]) G.sel = { quest: m.quest, mode: m.mode === 'clock' ? 'clock' : 'chapters', len: [1, 2, 3].includes(m.len) ? m.len : 2, mins: [20, 40, 60].includes(m.mins) ? m.mins : 40 }; break;
       case 'pick': if (G.phase !== 'pick') this.toPick(); return;
       case 'begin': if (G.phase === 'pick') this.begin(); return;
       case 'next': this.advance(); return;
@@ -177,8 +182,7 @@ export class Host {
       case 'chaos': if (G.phase === 'play') { G.chaos = { text: pick(CHAOS), n: Date.now() }; } break;
       case 'time': if (G.deadline) G.deadline += 30000; break;
       case 'hint': if (G.sub === 'work' && this.scene().ch.kind === 'riddle') { G.hint = true; G.hintText = this.priv.prompt.hint; } break;
-      case 'dial': if (['silly', 'lesson', 'slow'].includes(m.k)) G.dials[m.k] = !!m.v; break;
-      case 'topic': { const t = m.t, a = G.dials.topics; if (LESSON_TOPICS.includes(t)) G.dials.topics = a.includes(t) ? a.filter(x => x !== t) : [...a, t]; break; }
+      case 'dial': if (['silly', 'slow'].includes(m.k)) G.dials[m.k] = !!m.v; break;
       case 'lobby': G.phase = 'lobby'; Object.values(G.players).forEach(p => p.ready = false); break;
     }
     this.broadcast();
@@ -192,7 +196,10 @@ export class Host {
 
   begin() {
     const G = this.G, Qd = QUESTS[G.sel.quest];
-    G.phase = 'play'; G.quest = Qd.id; G.len = G.sel.len; G.spirit = 4; G.coins = Qd.coins ?? null; G.items = [];
+    G.phase = 'play'; G.quest = Qd.id; G.spirit = 4; G.coins = Qd.coins ?? null; G.items = [];
+    G.len = G.sel.mode === 'clock' ? (G.sel.mins <= 25 ? 1 : G.sel.mins <= 45 ? 2 : 3) : G.sel.len;
+    G.clockEnd = G.sel.mode === 'clock' ? Date.now() + G.sel.mins * 60000 : 0; G.rushed = false;
+    G.companion = G.order.length <= 3 ? AYO : null;
     G.visited = 0; G.turn = 0; G.awards = null; G.ending = null;
     for (const id of G.order) { G.stats[id] = { wins: 0, solved: 0, correct: 0, moments: 0, subs: 0 }; G.players[id].momentUsed = false; G.players[id].moment = false; }
     this.enter(Qd.start);
@@ -216,6 +223,7 @@ export class Host {
       if (r.spirit != null && G.spirit < r.spirit) continue;
       if (r.coins != null && (G.coins || 0) < r.coins) continue;
       if (r.item && !G.items.includes(r.item)) continue;
+      if (r.missing && G.items.includes(r.missing)) continue;
       if (r.anyItem && !r.anyItem.some(i => G.items.includes(i))) continue;
       return r.to;
     }
@@ -224,6 +232,7 @@ export class Host {
 
   enter(id) {
     const G = this.G, Qd = this.Q();
+    if (G.clockEnd && !G.rushed && Qd.rush && Date.now() > G.clockEnd - 240000 && !(Qd.late || []).includes(id)) { G.rushed = true; id = Qd.rush; }
     id = this.resolveNext(id);
     let sc = Qd.scenes[id], guard = 0;
     while (sc && sc.routes && guard++ < 5) { id = this.route(sc); sc = Qd.scenes[id]; }
@@ -232,16 +241,24 @@ export class Host {
     Object.assign(G, {
       sceneId: id, sub: 'read', prompt: null, votes: {}, vres: null, subs: {}, shown: null, favs: {}, winners: null,
       solved: {}, guesses: [], answers: {}, tres: null, roll: null, chaos: null, hint: false, hintText: null, reveal: null,
-      deadline: 0, dur: 0
+      deadline: 0, dur: 0, fight: null, sigil: null
     });
+    if (sc.on) {
+      if (sc.on.give && !G.items.includes(sc.on.give)) G.items.push(sc.on.give);
+      if (sc.on.coin) G.coins = Math.max(0, (G.coins || 0) + Math.max(sc.on.coin, -(G.coins || 0)));
+      if (sc.on.takeAll) G.coins = 0;
+      if (sc.on.spirit) G.spirit = Math.max(0, Math.min(5, G.spirit + sc.on.spirit));
+      if (sc.on.take) G.items = G.items.filter(i => i !== sc.on.take);
+    }
     G.visited++; G.turn++;
     const ids = G.order; G.spot = ids[(G.turn - 1) % ids.length];
     Object.values(G.players).forEach(p => p.moment = false);
     if (sc.end) { G.phase = 'end'; G.ending = { id, kind: sc.end }; G.sub = 'end'; this.computeAwards(); }
     else if (sc.ch) {
       const pr = pick(sc.ch.p); this.priv.prompt = pr;
-      G.prompt = sc.ch.kind === 'riddle' ? { q: pr.q } : sc.ch.kind === 'trivia' ? { q: pr.q, o: pr.o } : sc.ch.kind === 'charades' ? null : pr;
-      if (sc.ch.kind === 'charades') this.priv.secret = pr;
+      const k = sc.ch.kind;
+      G.prompt = k === 'riddle' ? { q: pr.q } : QUIZ.includes(k) ? { q: pr.q, o: pr.o, beast: pr.beast || null, seed: Math.floor(Math.random() * 99999) } : k === 'sigil' ? { o: pr.o } : (k === 'charades' || k === 'swarm') ? null : pr;
+      if (k === 'charades' || k === 'sigil') this.priv.secret = pr;
     }
     this.broadcast();
   }
@@ -258,6 +275,7 @@ export class Host {
     const sc = this.scene();
     if (G.sub === 'read') {
       if (sc.choices) { G.sub = 'vote'; this.broadcast(); }
+      else if (sc.ch && sc.ch.kind === 'swarm') this.toRoll();
       else if (sc.ch) this.startWork();
       else this.enter(sc.next);
     } else if (G.sub === 'vote') this.resolveVote();
@@ -293,7 +311,7 @@ export class Host {
     const G = this.G, k = this.scene().ch.kind;
     G.sub = 'work';
     G.dur = SECS[k] * (G.dials.slow ? 2 : 1) * 1000; G.deadline = Date.now() + G.dur;
-    if (k === 'charades') this.send({ t: 'secret', to: G.spot, text: this.priv.secret.t, sc: G.sceneId });
+    if (k === 'charades' || k === 'sigil') this.send({ t: 'secret', to: G.spot, text: this.priv.secret.t, sc: G.sceneId });
     this.broadcast();
   }
 
@@ -302,7 +320,8 @@ export class Host {
     const k = this.scene().ch.kind, on = this.onlineIds();
     const done = k === 'charades' ? Object.keys(G.solved).length > 0
       : k === 'riddle' ? on.every(id => G.solved[id])
-      : k === 'trivia' ? on.every(id => G.answers[id])
+      : QUIZ.includes(k) ? on.every(id => G.answers[id])
+      : k === 'sigil' ? on.filter(id => id !== G.spot).every(id => G.answers[id]) && !!G.sigil
       : on.every(id => G.subs[id]);
     if (done) setTimeout(() => { if (G.sub === 'work') this.endWork(); }, 900);
   }
@@ -313,10 +332,12 @@ export class Host {
       const entries = Object.entries(this.priv.subs || {}).map(([pid, d]) => ({ pid, kind: d.kind, data: d.data }));
       G.shown = entries;
       if (entries.length >= 2) { G.sub = 'judge'; G.dur = JUDGE_SECS * 1000; G.deadline = Date.now() + G.dur; this.broadcast(); return; }
-    } else if (k === 'trivia') {
+    } else if (QUIZ.includes(k) || k === 'sigil') {
       const correct = {};
       Object.entries(this.priv.ans || {}).forEach(([pid, i]) => { if (i === this.priv.prompt.a) { correct[pid] = true; G.stats[pid].correct++; } });
       G.tres = { a: this.priv.prompt.a, correct };
+      if (k === 'fight') G.fight = { name: this.priv.prompt.beast, weak: this.priv.prompt.weak, hit: Object.keys(correct).length > 0 };
+      if (k === 'sigil') G.reveal = this.priv.secret.t;
     } else if (k === 'charades') G.reveal = this.priv.secret.t;
     else if (k === 'riddle') G.reveal = this.priv.prompt.a[0];
     this.toRoll();
@@ -343,9 +364,12 @@ export class Host {
       if (['draw', 'caption', 'roleplay'].includes(k)) bonus = (G.subs[pid] ? 1 : 0) + (G.winners && G.winners.includes(pid) ? 2 : 0);
       else if (k === 'charades') bonus = (solvedAny ? 1 : 0) + (G.solved[pid] ? 2 : 0) + (pid === G.spot ? (solvedAny ? 2 : 1) : 0);
       else if (k === 'riddle') bonus = G.solved[pid] ? 2 : 0;
-      else if (k === 'trivia') bonus = G.tres && G.tres.correct[pid] ? 2 : 0;
+      else if (QUIZ.includes(k)) bonus = G.tres && G.tres.correct[pid] ? 2 : 0;
+      else if (k === 'sigil') bonus = G.tres && G.tres.correct[pid] ? 2 : (pid === G.spot ? 1 : 0);
+      if (k === 'fight' && this.priv.prompt.weak === CLASS[hero.cls].type) bonus += 2;
       return { pid, d, tb, bonus, total: d + tb + bonus };
     });
+    if (k === 'swarm') return this.doSwarm(ids, sc);
     const total = rolls.reduce((s, r) => s + r.total, 0), n = ids.length;
     const need = { great: Math.ceil(6.3 * n), ok: Math.ceil(5 * n) };
     let lvl = total >= need.great ? 2 : total >= need.ok ? 1 : 0;
@@ -358,6 +382,24 @@ export class Host {
     const outcome = ['oops', 'ok', 'great'][lvl];
     G.spirit = Math.max(0, Math.min(5, G.spirit + (outcome === 'great' ? 1 : outcome === 'oops' ? -1 : 0)));
     G.roll = { rolls, total, need, outcome, used, text: sc.out[outcome], at: Date.now() };
+    if (sc.outCoin && sc.outCoin[outcome]) G.coins = Math.max(0, (G.coins || 0) + sc.outCoin[outcome] + (sc.lanternBonus && G.items.includes(sc.lanternBonus.item) ? sc.lanternBonus.coin : 0));
+    this.broadcast();
+  }
+
+  doSwarm(ids, sc) {
+    const G = this.G, n = ids.length, total = Math.min(20, 8 + 3 * n);
+    const allies = G.items.filter(i => (this.Q().allies || []).includes(i)).length + (G.companion ? 1 : 0);
+    const rolls = ids.map(pid => {
+      const hero = G.players[pid].hero, p = G.players[pid], dice = [1, 2, 3].map(() => 1 + Math.floor(Math.random() * 6));
+      const tb = CLASS[hero.cls].traits[sc.ch.trait] || 0, power = !p.momentUsed;
+      const hits = dice.reduce((a, d) => a + Math.floor(d / 2), 0) + tb + (power ? 4 : 0);
+      return { pid, dice, tb, power, hits, d: dice.reduce((a, b) => a + b, 0), bonus: tb + (power ? 4 : 0), total: hits };
+    });
+    const coinHits = Math.floor((G.coins || 0) / 5) + (G.items.includes('Echo Charge') ? 3 : 0), allyHits = allies * 2;
+    const down = rolls.reduce((a, r) => a + r.hits, 0) + coinHits + allyHits, left = Math.max(0, total - down);
+    const outcome = left <= 0 ? 'great' : left <= 5 ? 'ok' : 'oops';
+    G.spirit = Math.max(0, Math.min(5, G.spirit + (outcome === 'great' ? 1 : outcome === 'oops' ? -1 : 0)));
+    G.roll = { swarm: true, rolls, total: down, beasts: total, coinHits, allyHits, left, outcome, used: [], need: null, text: sc.out[outcome], at: Date.now() };
     this.broadcast();
   }
 

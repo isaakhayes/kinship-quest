@@ -241,3 +241,20 @@ button:disabled { cursor: not-allowed; }
   .bon { min-width: 90px; } .bon span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+/* ---- v3 additions ---- */
+.spr { image-rendering: pixelated; }
+.roots { font: 17px 'VT323', monospace; color: var(--muted); margin-top: 6px; }
+.chipbtn { font: 8px 'Press Start 2P'; padding: 8px 9px; margin: 3px 3px 0 0; background: var(--ink); color: var(--text, #fff7e0); border: 0; cursor: pointer; box-shadow: 0 0 0 2px #4a2e8a; }
+.chipbtn.on { background: var(--yellow, #ffd23f); color: #0d0a1f; }
+.lesson h4 small { font-size: 8px; color: var(--cyan, #2de2e6); margin-left: 6px; }
+.beastrow { display: flex; align-items: center; gap: 12px; margin: 6px 0; font: 10px 'Press Start 2P'; }
+.beast { image-rendering: pixelated; animation: hop .6s steps(2) infinite; }
+.sigimg { width: min(100%, 384px); image-rendering: pixelated; background: #fff7e0; }
+.swarm { display: flex; flex-wrap: wrap; gap: 2px; margin: 8px 0; }
+.swarm img { image-rendering: pixelated; animation: hop .8s steps(2) infinite; }
+.swarm img.gone { opacity: .12; animation: none; filter: grayscale(1); }
+.dice3 { display: flex; gap: 4px; }
+.dice3 .die { width: 30px; height: 30px; line-height: 30px; font-size: 14px; }
+.actor.ayo small { color: var(--cyan, #2de2e6); }
+.dice3 .die,.die.set{color:#0d0a1f;background:#fff7e0;text-align:center;font-family:'Press Start 2P',monospace}

@@ -1,12 +1,12 @@
 # Kinship Quest
 
-A story-and-party game for 2 to 8 players on separate screens, built for parents playing with kids in different places.
-Everyone builds a pixel hero, the crew picks a quest, and the story moves through votes, drawing, captions, charades, riddles and quizzes. A host (parent) controls pace.
+An Afrofuturist family story game for a parent and kids on separate screens. 2 to 8 heroes, ages 8 to 12.
 
-- 3 authored quests, each with Quick / Standard / Epic lengths, branching paths and 3 endings
-- Parent dials: Make it sillier, Add lessons (topic chips), Extra time, Chaos Card, skip, hint
-- Host-authoritative sync over Supabase Realtime Broadcast (config.js). No accounts, no database.
-- Practice solo: open several tabs at `index.html?local`
+Play: https://isaakhayes.github.io/kinship-quest/
 
-Run locally: `python3 -m http.server 8000`. Test the story engine: `node tests/sim.mjs`.
-Add a quest: copy a file in `js/data/quests/`, register it in `js/data/quests.js`.
+- Pick or roll a hero (8 roles with weapon, power and cultural roots), then play The Silent Drum of Ndoto City.
+- Scenes: votes, riddles, charades, drawing a gate sigil, math and money, Glitch Beast fights, and a final swarm where saved powers, coins and allies matter.
+- Parent chooses length by chapters or by the clock. Lessons are built in (Wisdom Stones with a Swahili word).
+- Small crews get Ayo the courier as a companion.
+- Practice alone: add ?local and open several tabs.
+- Tests: node tests/sim.mjs

@@ -1,9 +1,9 @@
 // Kinship Quest client: screens, input, and sync. Everyone renders from the host's state snapshot.
 import { connect, LOCAL } from './net.js';
 import { Host } from './host.js';
-import { QUESTS, QUEST_LIST, LENGTHS } from './data/quests.js';
-import { CLASSES, CLASS, SKINS, OUTFITS, TRAITS, LESSON_TOPICS, rollHero } from './data/heroes.js';
-import { spriteHTML, spriteURL, backdropURL } from './sprites.js';
+import { QUESTS, QUEST_LIST, CHAPTER_LENGTHS, CLOCK_LENGTHS } from './data/quests.js';
+import { CLASSES, CLASS, SKINS, OUTFITS, HAIRS, TRAITS, VALUES, VALUE_NAMES, rollHero } from './data/heroes.js';
+import { spriteHTML, spriteURL, backdropURL, beastURL } from './sprites.js';
 import { sfx, isMuted, setMuted } from './audio.js';
 import { startStars } from './stars.js';
 
@@ -80,15 +80,16 @@ const fmtTime = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math
 const crewStrip = flags => `<div class="strip">${S.order.map(id => { const p = S.players[id]; return `<div class="chip ${flags[id] ? 'done' : ''} ${p.online ? '' : 'away'}">${spriteHTML(p.hero, 28)}<small>${esc(p.name)}</small><i></i></div>`; }).join('')}</div>`;
 const traitPips = (cls, big) => TRAITS.map(t => { const v = CLASS[cls].traits[t] || 0; return `<div class="trait"><span>${t}</span><b>${'■'.repeat(v)}<u>${'■'.repeat(3 - v)}</u></b></div>`; }).join('');
 function lessonCard(sc) {
-  if (!S.dials.lesson || !sc.lesson || !S.dials.topics.includes(sc.lesson.topic)) return '';
-  return `<div class="lesson box"><h4>WISDOM: ${esc(sc.lesson.topic)}</h4><p>${esc(sc.lesson.tip)}</p><p class="ask">PARENT PAUSE: ${esc(sc.lesson.ask)}</p></div>`;
+  if (!sc.lesson) return '';
+  const v = sc.lesson.v;
+  return `<div class="lesson box"><h4>WISDOM STONE: ${esc(VALUE_NAMES[v])} <small>${esc(VALUES[v])}</small></h4><p>${esc(sc.lesson.tip)}</p><p class="ask">TALK ABOUT IT: ${esc(sc.lesson.ask)}</p></div>`;
 }
 
 // ---------- screens ----------
 function titleScreen() {
   const urlRoom = (new URLSearchParams(location.search).get('room') || '').toUpperCase().slice(0, 4);
   const sess = loadSession();
-  const marching = CLASSES.map((c, i) => `<img class="march" style="animation-delay:${-i * .9}s" src="${spriteURL({ cls: c.id, skin: i % 6, outfit: i }, 4)}" width="72" alt="">`).join('');
+  const marching = CLASSES.map((c, i) => `<img class="march" style="animation-delay:${-i * .9}s" src="${spriteURL({ cls: c.id, skin: (i * 2) % 6, hair: i % 6, outfit: i }, 3)}" width="72" alt="">`).join('');
   return `<section class="title">
     <h1 class="logo" aria-label="Kinship Quest"><span class="l1">${[...'KINSHIP'].map((c, i) => `<i style="--i:${i}">${c}</i>`).join('')}</span><span class="l2">${[...'QUEST'].map((c, i) => `<i style="--i:${i + 3}">${c}</i>`).join('')}</span></h1>
     <p class="sub">A FAMILY ADVENTURE FOR 2 TO 8 HEROES</p>
@@ -126,9 +127,10 @@ function lobbyScreen() {
       <div class="preview"><div class="stage-floor">${spriteHTML(B, 120, 'idle')}</div>
         <div class="who"><b>${esc(p.name)}</b> THE ${cls.name}<p class="catch">${esc(B.catch)}</p><p class="quirk">QUIRK: ${esc(B.quirk)}</p></div></div>
       <div class="label">CHOOSE A CLASS</div>
-      <div class="classes">${CLASSES.map(c => { const t = taken.includes(c.id); return `<button class="cls ${B.cls === c.id ? 'sel' : ''}" ${t ? 'disabled' : ''} data-act="cls" data-v="${c.id}">${spriteHTML({ cls: c.id, skin: B.skin, outfit: B.outfit }, 44)}<small>${t ? 'TAKEN' : c.name}</small></button>`; }).join('')}</div>
-      <div class="info"><div class="traits">${traitPips(B.cls)}</div><p><b>HERO MOMENT: ${cls.move}</b><br>${esc(cls.blurb)}<br><em>Once per quest, bump the team's roll up one level.</em></p></div>
+      <div class="classes">${CLASSES.map(c => { const t = taken.includes(c.id); return `<button class="cls ${B.cls === c.id ? 'sel' : ''}" ${t ? 'disabled' : ''} data-act="cls" data-v="${c.id}">${spriteHTML({ cls: c.id, skin: B.skin, hair: B.hair, outfit: B.outfit }, 40)}<small>${t ? 'TAKEN' : c.name}</small></button>`; }).join('')}</div>
+      <div class="info"><div class="traits">${traitPips(B.cls)}</div><p><b>WEAPON: ${cls.weapon}</b> <em>(${cls.type})</em><br><b>POWER: ${cls.power}</b><br>${esc(cls.powerText)}<br><em>Save your power! Spend it early and it is gone for the final swarm.</em></p><p class="roots"><b>ROOTS:</b> ${esc(cls.roots)}</p></div>
       <div class="swatches"><div><div class="label">SKIN</div>${SKINS.map((c, i) => `<button class="sw ${B.skin === i ? 'sel' : ''}" style="--c:${c}" data-act="skin" data-v="${i}" aria-label="skin ${i + 1}"></button>`).join('')}</div>
+        <div><div class="label">HAIR</div>${HAIRS.map((h, i) => `<button class="chipbtn ${B.hair === i ? 'on' : ''}" data-act="hair" data-v="${i}">${h}</button>`).join('')}</div>
         <div><div class="label">COLOR</div>${OUTFITS.map((c, i) => `<button class="sw ${B.outfit === i ? 'sel' : ''}" style="--c:${c}" data-act="outfit" data-v="${i}" aria-label="color ${i + 1}"></button>`).join('')}</div></div>
       <div class="btnrow">${btn('ROLL THE DICE', 'data-act="roll"', 'c')}${btn(p.ready ? 'READY!' : 'I AM READY', 'data-act="ready"', p.ready ? 'g' : 'y')}</div>
     </div>
@@ -143,25 +145,32 @@ function lobbyScreen() {
 }
 
 function pickScreen() {
-  const sel = S.sel, q = QUESTS[sel.quest], est = q.est[sel.len];
+  const sel = S.sel, q = QUESTS[sel.quest], clock = sel.mode === 'clock';
+  const lenName = clock ? sel.mins + ' MIN CLOCK' : CHAPTER_LENGTHS[sel.len - 1].name + ' STORY';
   return `<section class="pick">
     <h2 class="shead">CHOOSE YOUR QUEST</h2>
     <div class="quests">${QUEST_LIST.map(qq => `<button class="quest box ${sel.quest === qq.id ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="sel" data-q="${qq.id}">
       <img class="qimg" src="${backdropURL(qq.theme, 3)}" alt=""><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></button>`).join('')}</div>
     <div class="box pad opts">
-      <div><div class="label">HOW LONG?</div><div class="seg">${LENGTHS.map(l => `<button class="${sel.len === l.id ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="len" data-v="${l.id}">${l.name}<small>${l.mins}</small></button>`).join('')}</div></div>
+      <div><div class="label">HOW TO MEASURE LENGTH</div><div class="seg">
+        <button class="${!clock ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mode" data-v="chapters">BY CHAPTERS</button>
+        <button class="${clock ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mode" data-v="clock">BY THE CLOCK</button></div>
+        <div class="seg">${clock
+          ? CLOCK_LENGTHS.map(l => `<button class="${sel.mins === l.mins ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mins" data-v="${l.mins}">${l.name}</button>`).join('')
+          : CHAPTER_LENGTHS.map(l => `<button class="${sel.len === l.id ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="len" data-v="${l.id}">${l.name}<small>${l.note}</small></button>`).join('')}</div>
+        ${clock ? '<p class="note">The story speeds up near the end so the final battle always happens.</p>' : ''}</div>
       <div><div class="label">PARENT DIALS</div>${dialsHTML()}</div>
     </div>
-    <div class="box pad crewrow"><div class="label">CREW</div><div class="heroes">${S.order.map(id => { const q = S.players[id]; return `<div class="hh">${spriteHTML(q.hero, 40, 'idle')}<small>${esc(q.name)}</small></div>`; }).join('')}</div></div>
-    ${isHost ? `<div class="startbox">${btn('BEGIN: ' + esc(q.short), 'data-act="begin"', 'y big')}<small>${LENGTHS[sel.len - 1].name} path, about ${est} scenes.</small>${btn('BACK TO HEROES', 'data-act="tolobby"', 'p small')}</div>` : '<div class="note center">THE HOST IS CHOOSING THE QUEST...</div>'}
+    <div class="box pad crewrow"><div class="label">CREW</div><div class="heroes">${S.order.map(id => { const q = S.players[id]; return `<div class="hh">${spriteHTML(q.hero, 40, 'idle')}<small>${esc(q.name)}</small></div>`; }).join('')}</div>
+      ${S.order.length <= 3 ? '<p class="note">With a small crew, AYO the courier joins your team!</p>' : ''}</div>
+    ${isHost ? `<div class="startbox">${btn('BEGIN: ' + esc(q.short), 'data-act="begin"', 'y big')}<small>${lenName}</small>${btn('BACK TO HEROES', 'data-act="tolobby"', 'p small')}</div>` : '<div class="note center">THE HOST IS CHOOSING THE QUEST...</div>'}
   </section>`;
 }
 
 function dialsHTML() {
-  if (!isHost) return `<div class="dials ro"><span class="${S.dials.silly ? 'on' : ''}">SILLY ${S.dials.silly ? 'ON' : 'OFF'}</span><span class="${S.dials.lesson ? 'on' : ''}">LESSONS ${S.dials.lesson ? 'ON' : 'OFF'}</span><span class="${S.dials.slow ? 'on' : ''}">EXTRA TIME ${S.dials.slow ? 'ON' : 'OFF'}</span></div>`;
+  if (!isHost) return `<div class="dials ro"><span class="${S.dials.silly ? 'on' : ''}">SILLY ${S.dials.silly ? 'ON' : 'OFF'}</span><span class="${S.dials.slow ? 'on' : ''}">EXTRA TIME ${S.dials.slow ? 'ON' : 'OFF'}</span></div>`;
   const t = (k, label) => `<button class="toggle ${S.dials[k] ? 'on' : ''}" data-act="dial" data-k="${k}"><i></i>${label}</button>`;
-  return `<div class="dials">${t('silly', 'MAKE IT SILLIER')}${t('lesson', 'ADD LESSONS')}${t('slow', 'EXTRA TIME')}</div>
-    ${S.dials.lesson ? `<div class="topics">${LESSON_TOPICS.map(x => `<button class="chipbtn ${S.dials.topics.includes(x) ? 'on' : ''}" data-act="topic" data-v="${x}">${x}</button>`).join('')}</div>` : ''}`;
+  return `<div class="dials">${t('silly', 'MAKE IT SILLIER')}${t('slow', 'EXTRA TIME')}</div>`;
 }
 
 function playScreen() {
@@ -171,7 +180,7 @@ function playScreen() {
     ui.sceneKey = sceneKey; ui.zoneKey = ''; ui.fav = null;
     $('#screen').innerHTML = `<section class="play">
       <div class="banner"><img src="${backdropURL(sc.th || q.theme, S.turn)}" alt="">
-        <div class="cast">${S.order.map(id => { const p = S.players[id]; return `<div class="actor ${id === S.spot ? 'spot' : ''}" id="a-${id}">${id === S.spot ? '<em>SPOTLIGHT</em>' : ''}${spriteHTML(p.hero, 56, id === S.spot ? 'hop' : 'idle')}<small>${esc(p.name)}</small></div>`; }).join('')}</div></div>
+        <div class="cast">${S.companion ? `<div class="actor ayo">${spriteHTML(S.companion.hero, 56, 'idle')}<small>AYO</small></div>` : ''}${S.order.map(id => { const p = S.players[id]; return `<div class="actor ${id === S.spot ? 'spot' : ''}" id="a-${id}">${id === S.spot ? '<em>SPOTLIGHT</em>' : ''}${spriteHTML(p.hero, 56, id === S.spot ? 'hop' : 'idle')}<small>${esc(p.name)}</small></div>`; }).join('')}</div></div>
       <div class="dialog box" id="dialog"><div class="speaker">${esc(sc.title)}</div><p id="narr"></p><span class="more">▼</span></div>
       <div id="inter"></div>
       <div id="hostbar"></div>
@@ -185,7 +194,7 @@ function playScreen() {
   else if (S.dials.silly && sc.silly && S.sub === 'read') text += ' ' + fill(sc.silly);
   narrate(nk, text);
   // interaction zone (rebuilt only when its key changes, so drawings and typing survive updates)
-  const zk = [S.sub, S.subs[pid] ? 's' : '', S.answers[pid] ? 'a' : '', S.solved[pid] ? 'v' : '', S.votes[pid] ? 'o' : '', S.favs[pid] ? 'f' : '', S.roll ? S.roll.at : 'n', secret?.sc === S.sceneId ? 'k' : ''].join('|');
+  const zk = [S.sub, S.subs[pid] ? 's' : '', S.answers[pid] ? 'a' : '', S.solved[pid] ? 'v' : '', S.votes[pid] ? 'o' : '', S.favs[pid] ? 'f' : '', S.roll ? S.roll.at : 'n', secret?.sc === S.sceneId ? 'k' : '', S.sigil ? 'g' : ''].join('|');
   if (ui.zoneKey !== zk) { ui.zoneKey = zk; $('#inter').innerHTML = interactionHTML(sc); afterMount(sc); }
   else liveUpdate(sc);
   $('#hostbar').innerHTML = hostBar(sc);
@@ -224,14 +233,18 @@ function interactionHTML(sc) {
 }
 
 const availChoice = c => !(c.needs && !S.items.includes(c.needs)) && !(c.coin && (S.coins || 0) + c.coin < 0);
-const KIND_LABEL = { draw: 'DRAW IT', caption: 'CAPTION IT', roleplay: 'IN CHARACTER', charades: 'ACT IT OUT', riddle: 'RIDDLE LOCK', trivia: 'QUICK QUIZ' };
+const KIND_LABEL = { draw: 'DRAW IT', caption: 'CAPTION IT', roleplay: 'IN CHARACTER', charades: 'ACT IT OUT', riddle: 'RIDDLE LOCK', trivia: 'QUICK QUIZ', math: 'MATH TIME', fight: 'GLITCH FIGHT', sigil: 'THE SIGIL', swarm: 'THE SWARM' };
 const KIND_BRIEF = {
   draw: 'Everyone draws at once on a little pixel canvas. Then the crew votes for a favorite.',
   caption: 'Everyone writes one funny line. Then the crew votes for the best one.',
   roleplay: 'Say what your hero does or says, in one sentence. The crew votes for the best.',
   charades: 'The spotlight hero acts it out with NO WORDS. Everyone else types guesses.',
   riddle: 'Everybody types answers at once. Everyone who solves it helps the team.',
-  trivia: 'One question each. Right answers help the team roll.'
+  trivia: 'One question each. Right answers help the team roll.',
+  math: 'Solve the problem. Right answers boost the roll, and the roll decides how many coins you earn.',
+  fight: 'A Glitch Beast! Answer to find its weak spot. Heroes whose weapon matches it get a bonus.',
+  sigil: 'The spotlight hero draws a secret sign. Everyone else picks the matching one.',
+  swarm: 'The final battle! Every hero rolls three dice. Unused powers, saved coins, and allies add hits.'
 };
 const PALETTE = ['#0d0a1f', '#fff7e0', '#ff3b5c', '#ff8a1f', '#ffd23f', '#5fe36b', '#1e7a46', '#2de2e6', '#4d7cff', '#b266ff', '#ff6fb5', '#8a5a2b', '#e0b48a', '#6b6b8a', '#3a1f7a', '#c9d1e6'];
 
@@ -255,31 +268,58 @@ function workHTML(sc) {
   if (k === 'riddle') return `<div class="card box mission"><h4>RIDDLE LOCK</h4><p class="prompt">${esc(S.prompt.q)}</p><p id="hint" class="hint"></p></div>
       ${S.solved[pid] ? `<div class="box pad center ok">YOU GOT IT!</div>` : `<div class="box pad write inline"><input id="guess" maxlength="40" autocomplete="off" placeholder="TYPE YOUR ANSWER">${btn('TRY IT', 'data-act="guess"', 'g')}</div>`}
       <div id="feed" class="feed"></div>${timer}<div id="status"></div>`;
-  if (k === 'trivia') return `<div class="card box mission"><h4>QUICK QUIZ</h4><p class="prompt">${esc(S.prompt.q)}</p></div>
+  if (k === 'sigil') {
+    const actor = pid === S.spot;
+    if (actor) return `<div class="card box mission"><h4>THE SIGIL</h4><p class="secret">${secret && secret.sc === S.sceneId ? esc(secret.text.toUpperCase()) : 'LOADING...'}</p><p>Draw this sign. Only you can see the name.</p></div>` + (mine ? sent() : `<div class="drawing box">
+      <canvas id="pix" width="128" height="80"></canvas>
+      <div class="tools"><div class="pal">${PALETTE.map((c, i) => `<button class="sw ${i === 0 ? 'sel' : ''}" style="--c:${c}" data-act="ink" data-v="${c}"></button>`).join('')}</div>
+        <div class="tt"><button class="toolb sel" data-act="tool" data-v="pen">PEN</button><button class="toolb" data-act="tool" data-v="fill">FILL</button><button class="toolb" data-act="tool" data-v="erase">ERASE</button><button class="toolb" data-act="clear">CLEAR</button></div></div>
+      ${btn('DONE! SHOW THE CREW', 'data-act="send-draw"', 'g')}</div>`) + timer + `<div id="status"></div>`;
+    return `<div class="card box mission"><h4>THE SIGIL</h4><p class="prompt">${esc(S.players[S.spot].name)} is drawing the sign. Pick the one that matches!</p></div>
+      ${S.sigil ? `<div class="box pad center"><img class="sigimg" src="${S.sigil}" alt="drawing"></div>` : '<div class="box pad center">WAITING FOR THE DRAWING...</div>'}
+      <div class="choices">${S.prompt.o.map((o, i) => `<button class="choice box" ${S.answers[pid] || !S.sigil ? 'disabled' : ''} data-act="ans" data-i="${i}"><b>${'ABCD'[i]}</b><span>${esc(o)}</span></button>`).join('')}</div>${timer}<div id="status"></div>`;
+  }
+  if (['trivia', 'math', 'fight'].includes(k)) return `<div class="card box mission"><h4>${KIND_LABEL[k]}</h4>${k === 'fight' && S.prompt.beast ? `<div class="beastrow"><img class="beast" src="${beastURL(S.prompt.seed, 5)}" width="96" alt=""><b>${esc(S.prompt.beast)}</b></div>` : ''}<p class="prompt">${esc(S.prompt.q)}</p></div>
       <div class="choices">${S.prompt.o.map((o, i) => `<button class="choice box" ${S.answers[pid] ? 'disabled' : ''} data-act="ans" data-i="${i}"><b>${'ABCD'[i]}</b><span>${esc(o)}</span></button>`).join('')}</div>${timer}<div id="status"></div>`;
   return '';
 }
 const sent = () => `<div class="box pad center ok">SENT! WAITING FOR THE CREW...</div>`;
 
+function swarmHTML(sc) {
+  const r = S.roll, pw = id => !S.players[id].momentUsed;
+  const beasts = Math.min(20, 8 + 3 * S.order.length);
+  const rows = S.order.map(id => { const q = S.players[id], rr = r && r.rolls.find(x => x.pid === id);
+    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 40)}<div class="rn"><b>${esc(q.name)}</b><small>${CLASS[q.hero.cls].power} ${pw(id) ? '<em>SAVED +4</em>' : '<em class="spent">SPENT</em>'}</small></div>
+      <div class="dice3">${rr ? rr.dice.map(d => `<span class="die set">${d}</span>`).join('') : '<span class="die">?</span><span class="die">?</span><span class="die">?</span>'}</div>
+      <div class="bon show">${rr ? `<b>${rr.hits} HITS</b>` : ''}</div></div>`; }).join('');
+  const allies = r ? r.allyHits / 2 : 0;
+  const result = r ? `<div class="result show" id="result"><div class="legend">BEASTS ${r.beasts}: HEROES ${r.rolls.reduce((a, x) => a + x.hits, 0)} + COINS+ECHO ${r.coinHits} + ALLIES ${r.allyHits} (${allies}) = ${r.total}</div>
+    <div class="outcome ${r.outcome}">${r.left <= 0 ? 'ALL BEASTS UN-SCRAMBLED!' : r.left + ' BEASTS LEFT'}</div></div>` : '';
+  return `<div class="card box"><h4>THE SWARM: ${beasts} GLITCH BEASTS</h4><div class="swarm">${Array.from({ length: beasts }, (_, i) => `<img src="${beastURL(i + 1, 2)}" width="36" class="${r && i >= r.left ? 'gone' : ''}" alt="">`).join('')}</div>
+    <p>Saved coins: <b>${S.coins ?? 0}</b>. Allies: <b>${S.items.filter(i => quest().allies.includes(i)).join(', ') || 'none'}</b>${S.companion ? ' + AYO' : ''}.</p></div>
+    <div class="rolls box pad">${rows}</div>${result}`;
+}
+
 function rollHTML(sc) {
+  if (sc.ch.kind === 'swarm') return swarmHTML(sc);
   const ch = sc.ch, r = S.roll, p = me();
   const rows = S.order.map(id => {
     const q = S.players[id], tb = CLASS[q.hero.cls].traits[ch.trait] || 0;
     const rr = r && r.rolls.find(x => x.pid === id);
-    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 40)}<div class="rn"><b>${esc(q.name)}</b><small>${ch.trait} +${tb}${q.moment ? ' <em>HERO MOMENT READY</em>' : ''}${q.momentUsed && !(r && r.used.includes(id)) ? ' <em class="spent">MOMENT USED</em>' : ''}</small></div>
+    return `<div class="rrow ${id === pid ? 'me' : ''}">${spriteHTML(q.hero, 40)}<div class="rn"><b>${esc(q.name)}</b><small>${ch.trait} +${tb}${q.moment ? ' <em>POWER READY</em>' : ''}${q.momentUsed && !(r && r.used.includes(id)) ? ' <em class="spent">POWER SPENT</em>' : ''}</small></div>
       <div class="die" data-d="${rr ? rr.d : 0}">${rr ? '?' : '?'}</div>
       <div class="bon">${rr ? `<span>${rr.tb ? '+' + rr.tb + ' TRAIT' : ''}</span><span>${rr.bonus ? '+' + rr.bonus + ' TEAM' : ''}</span><b data-t="${rr.total}">=${rr.total}</b>` : ''}</div></div>`;
   }).join('');
-  const mom = !r && p && !p.momentUsed ? `<div class="btnrow">${btn(p.moment ? 'MOMENT ARMED!' : 'USE MY HERO MOMENT: ' + CLASS[p.hero.cls].move, 'data-act="moment"', p.moment ? 'g' : 'p small')}</div>` : '';
+  const mom = !r && p && !p.momentUsed ? `<div class="btnrow">${btn(p.moment ? 'POWER ARMED!' : 'USE MY POWER: ' + CLASS[p.hero.cls].power, 'data-act="moment"', p.moment ? 'g' : 'p small')}</div>` : '';
   let result = '';
   if (r) {
     const pct = v => Math.min(100, Math.round(v / (r.need.great * 1.25) * 100));
     result = `<div class="result" id="result"><div class="meter"><i style="width:${pct(r.total)}%"></i><u style="left:${pct(r.need.ok)}%"></u><s style="left:${pct(r.need.great)}%"></s></div>
       <div class="legend">TEAM SCORE <b>${r.total}</b> &nbsp; NEED ${r.need.ok} FOR NICE, ${r.need.great} FOR GREAT</div>
-      <div class="outcome ${r.outcome}">${{ great: 'GREAT!', ok: 'NICE!', oops: 'OOPS!' }[r.outcome]}${r.used.length ? `<small>HERO MOMENT by ${r.used.map(id => esc(S.players[id].name)).join(', ')}! +1 level</small>` : ''}</div>${lessonCard(sc)}</div>`;
+      <div class="outcome ${r.outcome}">${{ great: 'GREAT!', ok: 'NICE!', oops: 'OOPS!' }[r.outcome]}${r.used.length ? `<small>POWER used by ${r.used.map(id => esc(S.players[id].name)).join(', ')}! +1 level</small>` : ''}</div>${lessonCard(sc)}</div>`;
   }
   return `<div class="card box"><h4>POWER ROLL</h4><p>${S.reveal ? (sc.ch.kind === 'charades' ? 'It was: <b>' + esc(S.reveal) + '</b>. ' : sc.ch.kind === 'riddle' ? 'The answer: <b>' + esc(S.reveal) + '</b>. ' : '') : ''}Every hero rolls a die. Good teamwork adds bonus points.</p>
-    ${S.tres ? `<p class="note">Quiz answer: <b>${esc(sc.ch.p.find(x => x.q === S.prompt.q).o[S.tres.a])}</b></p>` : ''}</div>
+    ${S.tres ? `<p class="note">Quiz answer: <b>${esc(S.prompt.o[S.tres.a])}</b></p>` : ''}</div>
     ${S.winners && S.winners.length ? `<div class="box pad center winners">CROWD FAVORITE: ${S.winners.map(id => esc(S.players[id].name)).join(' + ')} (+2)</div>` : ''}
     <div class="rolls box pad">${rows}</div>${mom}${result}`;
 }
@@ -297,7 +337,7 @@ function liveUpdate(sc) {
   if (st) {
     if (S.sub === 'vote') st.innerHTML = crewStrip(S.votes);
     else if (S.sub === 'judge') st.innerHTML = crewStrip(S.favs);
-    else if (S.sub === 'work') { const k = sc.ch.kind; st.innerHTML = crewStrip(k === 'riddle' ? S.solved : k === 'trivia' ? S.answers : k === 'charades' ? S.solved : S.subs); }
+    else if (S.sub === 'work') { const k = sc.ch.kind; st.innerHTML = crewStrip(k === 'riddle' ? S.solved : ['trivia', 'math', 'fight'].includes(k) ? S.answers : k === 'sigil' ? { ...S.answers, [S.spot]: !!S.sigil } : k === 'charades' ? S.solved : S.subs); }
   }
   const feed = $('#feed');
   if (feed) feed.innerHTML = S.guesses.map(g => `<div class="${g.ok ? 'ok' : ''}"><b>${esc(g.n)}</b> ${g.ok ? (g.t ? 'GOT IT: ' + esc(g.t) : 'GOT IT!') : esc(g.t)}</div>`).join('');
@@ -324,9 +364,9 @@ function endScreen() {
 
 function hudHTML() {
   const q = quest(), play = S.phase === 'play' || S.phase === 'end';
-  const est = q ? q.est[S.len] : 1, pct = S.phase === 'end' ? 100 : Math.min(95, Math.round(S.visited / est * 100));
+  const est = q ? q.est[S.len] : 1, pct = S.phase === 'end' ? 100 : S.clockEnd ? Math.min(95, Math.round(100 - Math.max(0, S.clockEnd - now()) / (S.sel.mins * 600))) : Math.min(95, Math.round(S.visited / est * 100));
   return `<div class="hudin"><div class="hq">${play ? esc(q.short) : 'KINSHIP QUEST'}</div>
-    ${play ? `<div class="prog" title="Progress"><i style="width:${pct}%"></i></div><div class="hearts">${hearts(S.spirit)}</div>${S.coins != null ? `<div class="coins"><b>${S.coins}</b> ${esc(q.coinName)}</div>` : ''}` : `<div class="roomtag">ROOM <b>${esc(room)}</b></div>`}
+    ${play ? `<div class="prog" title="Progress"><i style="width:${pct}%"></i></div><div class="hearts">${hearts(S.spirit)}</div>${S.coins != null ? `<div class="coins"><b>${S.coins}</b> COINS</div>` : ''}${S.clockEnd ? `<div class="coins"><b>${fmtTime(S.clockEnd - now())}</b></div>` : ''}` : `<div class="roomtag">ROOM <b>${esc(room)}</b></div>`}
     <button class="mini" data-act="mute" aria-label="sound">${isMuted() ? 'SOUND OFF' : 'SOUND ON'}</button><button class="mini" data-act="leave" aria-label="exit">EXIT</button></div>
     ${play && S.items.length ? `<div class="invbar">ITEMS: ${S.items.map(i => `<span>${esc(i)}</span>`).join('')}</div>` : ''}`;
 }
@@ -401,6 +441,9 @@ const actions = {
   cont() { const s = loadSession(); if (s) start(s.room, s.name, s.isHost); },
   leave() { if (!S || confirm('Leave this game?')) leave(); },
   mute() { setMuted(!isMuted()); render(); },
+  hair(el) { B.hair = +el.dataset.v; sendHero(); sfx.blip(); },
+  mode(el) { cmd('select', { quest: S.sel.quest, mode: el.dataset.v, len: S.sel.len, mins: S.sel.mins }); sfx.blip(); },
+  mins(el) { cmd('select', { quest: S.sel.quest, mode: 'clock', len: S.sel.len, mins: +el.dataset.v }); sfx.blip(); },
   cls(el) { B.cls = el.dataset.v; B.quirk = B.quirk; sendHero(); sfx.select(); },
   skin(el) { B.skin = +el.dataset.v; sendHero(); sfx.blip(); },
   outfit(el) { B.outfit = +el.dataset.v; sendHero(); sfx.blip(); },
@@ -409,10 +452,9 @@ const actions = {
   copy() { navigator.clipboard?.writeText(inviteLink()).then(() => toast('Invite link copied!'), () => toast(inviteLink())); },
   pick() { sfx.select(); cmd('pick'); },
   tolobby() { cmd('lobby'); },
-  sel(el) { cmd('select', { quest: el.dataset.q, len: S.sel.len }); sfx.select(); },
-  len(el) { cmd('select', { quest: S.sel.quest, len: +el.dataset.v }); sfx.blip(); },
+  sel(el) { cmd('select', { quest: el.dataset.q, mode: S.sel.mode, len: S.sel.len, mins: S.sel.mins }); sfx.select(); },
+  len(el) { cmd('select', { quest: S.sel.quest, mode: 'chapters', len: +el.dataset.v, mins: S.sel.mins }); sfx.blip(); },
   dial(el) { cmd('dial', { k: el.dataset.k, v: !S.dials[el.dataset.k] }); sfx.blip(); },
-  topic(el) { cmd('topic', { t: el.dataset.v }); sfx.blip(); },
   begin() { sfx.start(); cmd('begin'); },
   next() { sfx.select(); cmd('next'); },
   vote(el) { act('vote', { i: +el.dataset.i }); document.querySelectorAll('.choice').forEach(b => b.classList.toggle('sel', b === el)); sfx.select(); },
