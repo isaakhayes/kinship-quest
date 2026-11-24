@@ -8,7 +8,12 @@ export default {
   blurb: 'The Great Drum that keeps Ndoto City together has gone quiet. Glitch Beasts are creeping in from the Weave. Ayo the courier needs a crew. Hurry up!',
   est: { 1: 10, 2: 13, 3: 16 },
   coins: 10,
-  allies: ['Sefu', 'Builder Crew', 'Kwesi'],
+  allies: ['Sefu', 'Builder Crew', 'Kwesi', 'Glow Pup', 'Mystery Charm'],
+  twists: {
+    pup: { before: 'earn', scene: 'tw_pup' },
+    storm: { before: 'serpent', scene: 'tw_storm' },
+    trickster: { before: 'prep', scene: 'tw_trick' }
+  },
   rush: 'prep',
   late: ['prep', 'swarm', 'sw_end', 'r_end', 'end_a', 'end_b', 'end_c'],
   start: 'intro',
@@ -19,7 +24,7 @@ export default {
       next: 'c1'
     },
     c1: {
-      th: 'rail', title: 'WHICH WAY IN?',
+      th: 'rail', title: 'WHICH WAY IN?', min: 2, skip: 'loan',
       t: 'Ayo points two ways. The Skyrail is the quick road to the market, but a Static Hound is chewing the tracks. The old stairs are slow and safe. Which way?',
       lesson: { v: 'UNITY', tip: 'A crew decides together. Everybody gets a voice.', ask: 'When did your family decide something together?' },
       choices: [
@@ -28,7 +33,7 @@ export default {
       ]
     },
     hound: {
-      th: 'rail', title: 'THE STATIC HOUND',
+      th: 'rail', title: 'THE STATIC HOUND', noch: true,
       t: 'A Static Hound blocks the rail. It is not evil, only scrambled. A hero who knows its weak spot can un-scramble it! Answer fast.',
       ch: { kind: 'fight', trait: 'BRAVE', p: [
         { q: 'The Hound scrambles when sound is loud and clear. Which hero move should you try?', o: ['A rhythm wave', 'A nap', 'A whisper', 'Run away'], a: 0, beast: 'STATIC HOUND', weak: 'SOUND' },
@@ -79,7 +84,7 @@ export default {
       next: 'sigil'
     },
     sigil: {
-      th: 'hall', title: 'THE GATE OF SIGNS',
+      th: 'hall', title: 'THE GATE OF SIGNS', min: 2, skip: 'serpent',
       t: 'The way to the Drum Hall is a gate with a glowing lock. {spot} sees the sign on a secret screen and draws it. Everyone else must pick the sign that matches. The lock only opens for the right answer.',
       lesson: { v: 'CREATIVITY', tip: 'A drawing is a message. Making something new helps others understand.', ask: 'What is the best thing you have ever made?' },
       ch: { kind: 'sigil', trait: 'CLEVER', p: [
@@ -95,7 +100,7 @@ export default {
       next: 'sefu'
     },
     sefu: {
-      th: 'hall', title: 'SEFU THE DRUMMER',
+      th: 'hall', title: 'SEFU THE DRUMMER', min: 2, skip: 'serpent',
       t: 'Inside the hall, a young drummer named Sefu sits beside the Great Drum, sticks in his lap. "I forgot how to start the beat," he whispers. "I know I cannot do it alone."',
       lesson: { v: 'PURPOSE', tip: 'Knowing why you do something gives you courage to begin.', ask: 'Why is your family important to you?' },
       choices: [
@@ -150,7 +155,7 @@ export default {
       next: 'neg'
     },
     neg: {
-      th: 'hall', title: 'THE HARD TALK', min: 2, skip: 'serpent',
+      th: 'hall', title: 'THE HARD TALK', min: 3, skip: 'serpent',
       t: 'The Keeper of the Hall will not let anyone near the Great Drum without a promise. Speak for the crew in one sentence. Tell why the city needs the Drum.',
       lesson: { v: 'SELF', tip: 'You get to say who you are and what you stand for.', ask: 'What is something you stand for?' },
       ch: { kind: 'roleplay', trait: 'CHARMING', p: ['In one sentence, tell the Keeper why the city needs the Drum', 'In one sentence, promise the Keeper how your crew will protect the Drum'] },
@@ -186,14 +191,14 @@ export default {
     },
     r1: { routes: [{ coins: 50, item: 'Kwesi Loan', to: 'repay' }, { missing: 'Kwesi Loan', to: 'prep' }, { to: 'short' }] },
     repay: {
-      th: 'market', title: 'BABA KWESI GETS HIS 50',
+      th: 'market', title: 'BABA KWESI GETS HIS 50', noch: true,
       t: 'You pass Baba Kwesi on the way back. You borrowed 25 and promised 50, and you have it. You hand over 50 coins. He beams. "A crew that keeps its word is rare. I will walk with you to the fight."',
       on: { coin: -50, take: 'Kwesi Loan', give: 'Kwesi' },
       lesson: { v: 'FAITH', tip: 'Keeping your word makes people believe in you.', ask: 'When did you keep a promise even though it was hard?' },
       next: 'prep'
     },
     short: {
-      th: 'market', title: 'SHORT ON COINS',
+      th: 'market', title: 'SHORT ON COINS', noch: true,
       t: 'Baba Kwesi waits. You owe him 50 coins but you do not have them. He looks sad but kind. "Come back when you can." Your crew feels a little heavy.',
       on: { take: 'Kwesi Loan', spirit: -1 },
       lesson: { v: 'ECONOMY', tip: 'If you borrow, plan how to pay it back. Saving early helps.', ask: 'How could you have saved more?' },
@@ -219,6 +224,33 @@ export default {
         oops: 'The beasts are too many. The crew falls back, but the Drum stays warm.'
       },
       next: 'r_end'
+    },
+    tw_pup: {
+      th: 'market', title: 'A LOST GLOW PUP', noch: true,
+      t: 'Something small and glowing tugs at your boot. It is a Glow Pup, a tiny Weave creature that wandered out of the code. It looks lost. Ayo says, "Quick, decide. Hurry up!"',
+      lesson: { v: 'UNITY', tip: 'Helping someone small makes the whole crew stronger.', ask: 'When did you help someone who was lost or scared?' },
+      choices: [
+        { l: 'Pick it up and keep it with the crew', res: 'The pup licks your chin and glows warm. It will fight beside you!', give: 'Glow Pup', spirit: 1, next: '__ret' },
+        { l: 'Point it toward the safe lanes and move on', res: 'The pup trots off, wagging its pixel tail.', next: '__ret' }
+      ]
+    },
+    tw_storm: {
+      th: 'weave', title: 'A STATIC STORM', noch: true,
+      t: 'The air crackles. A Static Storm rolls through the Weave, turning the floor to fizz. You can wait it out together, or race through for a shortcut.',
+      lesson: { v: 'FAITH', tip: 'Patience and trust get a team through scary moments.', ask: 'When did waiting together beat rushing?' },
+      choices: [
+        { l: 'Shelter together and wait it out', res: 'You huddle close. The storm passes and everyone feels steadier.', spirit: 1, next: '__ret' },
+        { l: 'Race through the fizz', res: 'Zap! You make it, a bit singed, but you find 10 coins on the other side.', coin: 10, spirit: -1, next: '__ret' }
+      ]
+    },
+    tw_trick: {
+      th: 'hall', title: 'AUNTIE STATIC', noch: true,
+      t: 'A flickering trickster in a patchwork coat steps out of the shadows. "I am Auntie Static, and I love a good bargain. Ten coins for a Mystery Charm. Could be brilliant. Could be a sock." She winks.',
+      lesson: { v: 'SELF', tip: 'You decide what is worth your coins. A good deal is one you chose on purpose.', ask: 'How do you decide if something is worth buying?' },
+      choices: [
+        { l: 'Pay 10 coins for the Mystery Charm', res: 'The charm hums and sparkles. It is no sock. It will help in the final fight!', coin: -10, give: 'Mystery Charm', next: '__ret' },
+        { l: 'Say no thank you', res: 'Auntie Static laughs. "Smart. Or scared. Either way, good luck!" She melts into static.', next: '__ret' }
+      ]
     },
     r_end: { routes: [{ spirit: 4, to: 'end_a' }, { spirit: 2, to: 'end_b' }, { to: 'end_c' }] },
     end_a: {

@@ -114,7 +114,7 @@ export class Host {
       case 'hero': {
         if (G.phase !== 'lobby' || !validHero(m.hero)) return;
         if (Object.values(G.players).some(q => q.id !== pid && q.hero.cls === m.hero.cls)) return;
-        p.hero = { cls: m.hero.cls, skin: m.hero.skin, hair: m.hero.hair, outfit: m.hero.outfit, quirk: String(m.hero.quirk).slice(0, 60), catch: String(m.hero.catch).slice(0, 80) };
+        p.hero = { cls: m.hero.cls, skin: p.hero.skin, hair: p.hero.hair, outfit: m.hero.outfit, quirk: String(m.hero.quirk).slice(0, 60), catch: String(m.hero.catch).slice(0, 80) };
         p.ready = false; break;
       }
       case 'ready': if (G.phase === 'lobby') p.ready = !!m.v; break;
@@ -200,6 +200,9 @@ export class Host {
     G.len = G.sel.mode === 'clock' ? (G.sel.mins <= 25 ? 1 : G.sel.mins <= 45 ? 2 : 3) : G.sel.len;
     G.clockEnd = G.sel.mode === 'clock' ? Date.now() + G.sel.mins * 60000 : 0; G.rushed = false;
     G.companion = G.order.length <= 3 ? AYO : null;
+    const tw = Object.keys(Qd.twists || {}).sort(() => Math.random() - .5);
+    G.twists = tw.slice(0, G.len >= 3 ? 2 : G.len === 2 ? 2 : 1); G.twDone = []; G.chap = 0;
+    G.chapTotal = G.sel.mode === 'clock' ? 0 : { 1: 5, 2: 10, 3: 15 }[G.sel.len];
     G.visited = 0; G.turn = 0; G.awards = null; G.ending = null;
     for (const id of G.order) { G.stats[id] = { wins: 0, solved: 0, correct: 0, moments: 0, subs: 0 }; G.players[id].momentUsed = false; G.players[id].moment = false; }
     this.enter(Qd.start);
@@ -233,7 +236,10 @@ export class Host {
   enter(id) {
     const G = this.G, Qd = this.Q();
     if (G.clockEnd && !G.rushed && Qd.rush && Date.now() > G.clockEnd - 240000 && !(Qd.late || []).includes(id)) { G.rushed = true; id = Qd.rush; }
+    if (id === '__ret') id = G.ret;
     id = this.resolveNext(id);
+    const twId = (G.twists || []).find(t => Qd.twists[t].before === id && !G.twDone.includes(t));
+    if (twId) { G.twDone.push(twId); G.ret = id; id = Qd.twists[twId].scene; }
     let sc = Qd.scenes[id], guard = 0;
     while (sc && sc.routes && guard++ < 5) { id = this.route(sc); sc = Qd.scenes[id]; }
     if (!sc) { console.error('Missing scene', id); return this.toPick(); }
@@ -250,6 +256,7 @@ export class Host {
       if (sc.on.spirit) G.spirit = Math.max(0, Math.min(5, G.spirit + sc.on.spirit));
       if (sc.on.take) G.items = G.items.filter(i => i !== sc.on.take);
     }
+    if (!sc.noch && !sc.end && id !== Qd.start) G.chap++;
     G.visited++; G.turn++;
     const ids = G.order; G.spot = ids[(G.turn - 1) % ids.length];
     Object.values(G.players).forEach(p => p.moment = false);

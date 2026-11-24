@@ -16,7 +16,7 @@ export const CLASSES = [
 export const CLASS = Object.fromEntries(CLASSES.map(c => [c.id, c]));
 
 // Skin tones (deep to warm brown), hair styles, outfit colors.
-export const SKINS = ['#d9a066', '#bb7f4a', '#9a6238', '#7a4a2a', '#5a3520', '#3f2416'];
+export const SKINS = ['#3f2416', '#5a3520', '#7a4a2a', '#9a6238', '#bb7f4a', '#d9a066'];
 export const HAIRS = ['AFRO', 'LOCS', 'BRAIDS', 'WRAP', 'PUFFS', 'FADE'];
 export const OUTFITS = ['#ff3b5c', '#ff8a1f', '#ffd23f', '#5fe36b', '#2de2e6', '#4d7cff', '#b266ff', '#ff6fb5'];
 

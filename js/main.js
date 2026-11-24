@@ -129,10 +129,8 @@ function lobbyScreen() {
       <div class="label">CHOOSE A CLASS</div>
       <div class="classes">${CLASSES.map(c => { const t = taken.includes(c.id); return `<button class="cls ${B.cls === c.id ? 'sel' : ''}" ${t ? 'disabled' : ''} data-act="cls" data-v="${c.id}">${spriteHTML({ cls: c.id, skin: B.skin, hair: B.hair, outfit: B.outfit }, 40)}<small>${t ? 'TAKEN' : c.name}</small></button>`; }).join('')}</div>
       <div class="info"><div class="traits">${traitPips(B.cls)}</div><p><b>WEAPON: ${cls.weapon}</b> <em>(${cls.type})</em><br><b>POWER: ${cls.power}</b><br>${esc(cls.powerText)}<br><em>Save your power! Spend it early and it is gone for the final swarm.</em></p><p class="roots"><b>ROOTS:</b> ${esc(cls.roots)}</p></div>
-      <div class="swatches"><div><div class="label">SKIN</div>${SKINS.map((c, i) => `<button class="sw ${B.skin === i ? 'sel' : ''}" style="--c:${c}" data-act="skin" data-v="${i}" aria-label="skin ${i + 1}"></button>`).join('')}</div>
-        <div><div class="label">HAIR</div>${HAIRS.map((h, i) => `<button class="chipbtn ${B.hair === i ? 'on' : ''}" data-act="hair" data-v="${i}">${h}</button>`).join('')}</div>
-        <div><div class="label">COLOR</div>${OUTFITS.map((c, i) => `<button class="sw ${B.outfit === i ? 'sel' : ''}" style="--c:${c}" data-act="outfit" data-v="${i}" aria-label="color ${i + 1}"></button>`).join('')}</div></div>
-      <div class="btnrow">${btn('ROLL THE DICE', 'data-act="roll"', 'c')}${btn(p.ready ? 'READY!' : 'I AM READY', 'data-act="ready"', p.ready ? 'g' : 'y')}</div>
+      <div class="swatches"><div><div class="label">OUTFIT COLOR</div>${OUTFITS.map((c, i) => `<button class="sw ${B.outfit === i ? 'sel' : ''}" style="--c:${c}" data-act="outfit" data-v="${i}" aria-label="color ${i + 1}"></button>`).join('')}</div></div>
+      <div class="btnrow">${btn(p.ready ? 'READY!' : 'I AM READY', 'data-act="ready"', p.ready ? 'g' : 'y')}</div>
     </div>
     <div class="side">
       <div class="box pad room"><div class="label">ROOM CODE</div><div class="bigcode">${esc(room)}</div>
@@ -156,10 +154,10 @@ function pickScreen() {
         <button class="${!clock ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mode" data-v="chapters">BY CHAPTERS</button>
         <button class="${clock ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mode" data-v="clock">BY THE CLOCK</button></div>
         <div class="seg">${clock
-          ? CLOCK_LENGTHS.map(l => `<button class="${sel.mins === l.mins ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mins" data-v="${l.mins}">${l.name}</button>`).join('')
+          ? CLOCK_LENGTHS.map(l => `<button class="${sel.mins === l.mins ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mins" data-v="${l.mins}">${l.name}<small>${l.note}</small></button>`).join('')
           : CHAPTER_LENGTHS.map(l => `<button class="${sel.len === l.id ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="len" data-v="${l.id}">${l.name}<small>${l.note}</small></button>`).join('')}</div>
-        ${clock ? '<p class="note">The story speeds up near the end so the final battle always happens.</p>' : ''}</div>
-      <div><div class="label">PARENT DIALS</div>${dialsHTML()}</div>
+        ${clock ? '<p class="note">The story speeds up near the end so the final battle always happens. In chapter mode it always happens too.</p>' : ''}</div>
+      <div><div class="label">EACH GAME IS DIFFERENT</div><p class="note">Surprise guests and twists are picked at random every time you play.</p></div>
     </div>
     <div class="box pad crewrow"><div class="label">CREW</div><div class="heroes">${S.order.map(id => { const q = S.players[id]; return `<div class="hh">${spriteHTML(q.hero, 40, 'idle')}<small>${esc(q.name)}</small></div>`; }).join('')}</div>
       ${S.order.length <= 3 ? '<p class="note">With a small crew, AYO the courier joins your team!</p>' : ''}</div>
@@ -349,7 +347,7 @@ function hostBar(sc) {
   const sub = S.sub;
   const label = { read: sc.choices ? 'OPEN THE VOTE' : sc.ch ? 'START THE CHALLENGE' : 'CONTINUE', vote: 'LOCK IN VOTES', result: 'CONTINUE', work: "TIME'S UP, GO ON", judge: 'REVEAL THE WINNER', roll: S.roll ? 'CONTINUE' : 'ROLL THE DICE' }[sub] || 'CONTINUE';
   if (!isHost) return `<div class="bar2"><span class="note">THE HOST CONTROLS THE PACE</span></div>`;
-  return `<div class="bar2">${btn('PARENT', 'data-act="parent"', 'p small')}${btn(label, 'data-act="next"', 'y big pulse')}</div>`;
+  return `<div class="bar2">${btn('HOST', 'data-act="parent"', 'p small')}${btn(label, 'data-act="next"', 'y big pulse')}</div>`;
 }
 
 function endScreen() {
@@ -366,13 +364,13 @@ function hudHTML() {
   const q = quest(), play = S.phase === 'play' || S.phase === 'end';
   const est = q ? q.est[S.len] : 1, pct = S.phase === 'end' ? 100 : S.clockEnd ? Math.min(95, Math.round(100 - Math.max(0, S.clockEnd - now()) / (S.sel.mins * 600))) : Math.min(95, Math.round(S.visited / est * 100));
   return `<div class="hudin"><div class="hq">${play ? esc(q.short) : 'KINSHIP QUEST'}</div>
-    ${play ? `<div class="prog" title="Progress"><i style="width:${pct}%"></i></div><div class="hearts">${hearts(S.spirit)}</div>${S.coins != null ? `<div class="coins"><b>${S.coins}</b> COINS</div>` : ''}${S.clockEnd ? `<div class="coins"><b>${fmtTime(S.clockEnd - now())}</b></div>` : ''}` : `<div class="roomtag">ROOM <b>${esc(room)}</b></div>`}
+    ${play ? `${S.chapTotal ? `<div class="coins">CH <b>${Math.min(S.chap, S.chapTotal)}/${S.chapTotal}</b></div>` : ''}<div class="prog" title="Progress"><i style="width:${pct}%"></i></div><div class="hearts">${hearts(S.spirit)}</div>${S.coins != null ? `<div class="coins"><b>${S.coins}</b> COINS</div>` : ''}${S.clockEnd ? `<div class="coins"><b>${fmtTime(S.clockEnd - now())}</b></div>` : ''}` : `<div class="roomtag">ROOM <b>${esc(room)}</b></div>`}
     <button class="mini" data-act="mute" aria-label="sound">${isMuted() ? 'SOUND OFF' : 'SOUND ON'}</button><button class="mini" data-act="leave" aria-label="exit">EXIT</button></div>
     ${play && S.items.length ? `<div class="invbar">ITEMS: ${S.items.map(i => `<span>${esc(i)}</span>`).join('')}</div>` : ''}`;
 }
 
 function parentHTML() {
-  return `<div class="box pad pp"><h3>PARENT PANEL</h3><p class="note">Only you can see this. Changes apply right away.</p>${dialsHTML()}
+  return `<div class="box pad pp"><h3>HOST PANEL</h3><p class="note">Only the host sees this.</p>
     <div class="btnrow wrap">${btn('CHAOS CARD', 'data-act="chaos"', 'p')}${btn('+30 SECONDS', 'data-act="time"', 'c')}${S.phase === 'play' && S.sub === 'work' && scene().ch.kind === 'riddle' ? btn('GIVE A HINT', 'data-act="hint"', 'g') : ''}${S.phase === 'play' ? btn('SKIP THIS SCENE', 'data-act="skip"', 'y') : ''}</div>
     <div class="btnrow wrap">${S.phase === 'play' ? btn('END QUEST', 'data-act="pick"', 'p small') : ''}${btn('CLOSE', 'data-act="parent"', 'y small')}</div></div>`;
 }
@@ -447,7 +445,7 @@ const actions = {
   cls(el) { B.cls = el.dataset.v; B.quirk = B.quirk; sendHero(); sfx.select(); },
   skin(el) { B.skin = +el.dataset.v; sendHero(); sfx.blip(); },
   outfit(el) { B.outfit = +el.dataset.v; sendHero(); sfx.blip(); },
-  roll() { const taken = Object.values(S.players).filter(q => q.id !== pid).map(q => q.hero.cls); B = rollHero(taken); sendHero(); sfx.roll(); },
+  
   ready() { act('ready', { v: !me().ready }); me().ready ? sfx.back() : sfx.ready(); },
   copy() { navigator.clipboard?.writeText(inviteLink()).then(() => toast('Invite link copied!'), () => toast(inviteLink())); },
   pick() { sfx.select(); cmd('pick'); },
