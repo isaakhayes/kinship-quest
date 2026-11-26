@@ -1,0 +1,5 @@
+<!doctype html><body><pre id=o>running</pre><script type=module>
+import { renderTest } from '/js/music.js';
+const out = {}; for (const m of ['calm','market','night','hall','battle','win']) out[m] = await renderTest(m, 4);
+document.getElementById('o').textContent = JSON.stringify(out); window.DONE = true;
+</script>

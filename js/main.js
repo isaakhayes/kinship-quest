@@ -2,9 +2,12 @@
 import { connect, LOCAL } from './net.js';
 import { Host } from './host.js';
 import { QUESTS, QUEST_LIST, CHAPTER_LENGTHS, CLOCK_LENGTHS, COMING_SOON } from './data/quests.js';
-import { CLASSES, CLASS, SKINS, OUTFITS, HAIRS, TRAITS, VALUES, VALUE_NAMES, rollHero } from './data/heroes.js';
-import { spriteHTML, spriteURL, backdropURL, beastURL } from './sprites.js';
+import { COSTS, CLASSES, CLASS, SKINS, OUTFITS, HAIRS, PATTERNS, ACCESSORIES, GLOWS, QUIRKS, CATCHES, TRAITS, VALUES, VALUE_NAMES, rollHero } from './data/heroes.js';
+import { spriteHTML, spriteURL, backdropURL, beastURL, creatureURL, foregroundURL } from './sprites.js';
+import { GUIDE, BEAST_KEY } from './data/creatures.js';
+const AYO_HERO = { cls: 'runner', skin: 3, hair: 2, outfit: 4 };
 import { sfx, isMuted, setMuted } from './audio.js';
+import { music, MOOD_BY_THEME, musicEnabled, setMusic } from './music.js';
 import { startStars } from './stars.js';
 
 const $ = s => document.querySelector(s);
@@ -79,6 +82,49 @@ const btn = (label, attrs = '', cls = 'y') => `<button class="btn ${cls}" ${attr
 const fmtTime = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const crewStrip = flags => `<div class="strip">${S.order.map(id => { const p = S.players[id]; return `<div class="chip ${flags[id] ? 'done' : ''} ${p.online ? '' : 'away'}">${spriteHTML(p.hero, 34)}<small>${esc(p.name)}</small><i></i></div>`; }).join('')}</div>`;
 const traitPips = (cls, big) => TRAITS.map(t => { const v = CLASS[cls].traits[t] || 0; return `<div class="trait"><span>${t}</span><b>${'■'.repeat(v)}<u>${'■'.repeat(3 - v)}</u></b></div>`; }).join('');
+function bannerLayers(th, seed) {
+  return `<img class="far" src="${backdropURL(th, seed)}" alt=""><img class="near" src="${foregroundURL(th, seed)}" alt=""><canvas class="fx" data-th="${th}"></canvas>`;
+}
+
+// ambient particles: fireflies at night, embers in warm scenes, drifting glyph dust elsewhere
+const FX = { parts: new Map(), last: 0 };
+function fxLoop(t) {
+  requestAnimationFrame(fxLoop);
+  if (t - FX.last < 66) return; FX.last = t;
+  document.querySelectorAll('canvas.fx').forEach(cv => {
+    const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; FX.parts.delete(cv); }
+    let ps = FX.parts.get(cv); const th = cv.dataset.th;
+    const kind = th === 'night' || th === 'rail' ? 'fly' : th === 'weave' ? 'code' : 'ember';
+    if (!ps) { ps = Array.from({ length: 26 }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .6, vy: kind === 'ember' ? -Math.random() * .8 - .2 : kind === 'code' ? Math.random() * 1.6 + .6 : (Math.random() - .5) * .5, p: Math.random() * 6.28 })); FX.parts.set(cv, ps); }
+    const g = cv.getContext('2d'); g.clearRect(0, 0, w, h);
+    ps.forEach(q => {
+      q.x += q.vx + (kind === 'fly' ? Math.sin(q.p += .12) * .5 : 0); q.y += q.vy;
+      if (q.y < -4) q.y = h + 4; if (q.y > h + 4) q.y = -4; if (q.x < -4) q.x = w + 4; if (q.x > w + 4) q.x = -4;
+      const a = kind === 'fly' ? .45 + .55 * Math.abs(Math.sin(q.p)) : .8;
+      g.fillStyle = kind === 'fly' ? `rgba(255,236,120,${a})` : kind === 'code' ? `rgba(120,255,140,${a})` : `rgba(255,${150 + (q.p * 20 | 0) % 80},60,${a})`;
+      const sz = kind === 'code' ? 2 : 3; g.fillRect(Math.round(q.x), Math.round(q.y), sz, kind === 'code' ? 7 : sz);
+    });
+  });
+}
+requestAnimationFrame(fxLoop);
+
+function panelsHTML(sc) {
+  if (!sc.panels) return '';
+  const crew = S.order.map(id => S.players[id].hero);
+  const layer = l => {
+    const st = `left:${l.x}%;top:${l.y}%;width:${l.w}%`;
+    if (l.k === 'crew') return `<div class="lay crew ${l.tilt ? 'tilt' : ''}" style="${st}">${crew.map(h => `<img src="${spriteURL(h, 3)}" alt="">`).join('')}</div>`;
+    if (l.k === 'ayo') return `<img class="lay" style="${st}" src="${spriteURL(AYO_HERO, 4)}" alt="">`;
+    if (l.k.startsWith('c:')) return `<img class="lay" style="${st}" src="${creatureURL(l.k.slice(2), 5)}" alt="">`;
+    return '';
+  };
+  return `<div class="comic c${sc.panels.length}">${sc.panels.map(p => `<figure class="panel ${p.shake ? 'shake' : ''}"><img class="bg" src="${backdropURL(p.th, p.seed)}" alt="">${p.layers.map(layer).join('')}<figcaption>${esc(p.cap)}</figcaption></figure>`).join('')}</div>`;
+}
+function fieldCards() {
+  return (S.meet || []).map(k => { const g = GUIDE[k]; return g ? `<div class="guide box"><img src="${creatureURL(k, 5)}" alt=""><div><h4>FIELD GUIDE: ${g.name}</h4><p>${esc(g.line)}</p><p class="weak">WEAK TO: ${esc(g.weak)}</p></div></div>` : ''; }).join('');
+}
+
 function lessonCard(sc) {
   if (!sc.lesson) return '';
   const v = sc.lesson.v;
@@ -123,13 +169,18 @@ function lobbyScreen() {
   const everyoneReady = Object.values(S.players).filter(q => q.online).every(q => q.ready);
   return `<section class="lobby">
     <div class="box builder">
-      <h2>BUILD YOUR HERO</h2>
+      <h2>BUILD YOUR HERO</h2><p class="gembar">SPIRIT GEMS: <b>${gems()}</b> <small>Earn gems by finishing quests. Spend them on locked gear (the number is the cost).</small></p>
       <div class="preview"><div class="stage-floor">${spriteHTML(B, 168, 'idle')}</div>
         <div class="who"><b>${esc(p.name)}</b> THE ${cls.name}<p class="catch">${esc(B.catch)}</p><p class="quirk">QUIRK: ${esc(B.quirk)}</p></div></div>
       <div class="label">CHOOSE A CLASS</div>
       <div class="classes">${CLASSES.map(c => { const t = taken.includes(c.id); return `<button class="cls ${B.cls === c.id ? 'sel' : ''}" ${t ? 'disabled' : ''} data-act="cls" data-v="${c.id}">${spriteHTML({ cls: c.id, skin: B.skin, hair: B.hair, outfit: B.outfit }, 40)}<small>${t ? 'TAKEN' : c.name}</small></button>`; }).join('')}</div>
       <div class="info"><div class="traits">${traitPips(B.cls)}</div><p><b>WEAPON: ${cls.weapon}</b> <em>(${cls.type})</em><br><b>POWER: ${cls.power}</b><br>${esc(cls.powerText)}<br><em>Save your power! Spend it early and it is gone for the final swarm.</em></p><p class="roots"><b>ROOTS:</b> ${esc(cls.roots)}</p></div>
-      <div class="swatches"><div><div class="label">OUTFIT COLOR</div>${OUTFITS.map((c, i) => `<button class="sw ${B.outfit === i ? 'sel' : ''}" style="--c:${c}" data-act="outfit" data-v="${i}" aria-label="color ${i + 1}"></button>`).join('')}</div></div>
+      <div class="swatches"><div><div class="label">OUTFIT COLOR</div>${OUTFITS.map((c, i) => `<button class="sw ${B.outfit === i ? 'sel' : ''}" style="--c:${c}" data-act="outfit" data-v="${i}" aria-label="color ${i + 1}"></button>`).join('')}</div>
+        <div><div class="label">TRIM COLOR</div>${OUTFITS.map((c, i) => `<button class="sw ${(B.trim ?? 2) === i ? 'sel' : ''}" style="--c:${c}" data-act="trim" data-v="${i}" aria-label="trim ${i + 1}"></button>`).join('')}</div>
+        <div><div class="label">WEAPON GLOW</div>${GLOWS.map(([c, n], i) => `<button class="sw ${B.glow === i ? 'sel' : ''} ${locked('glow', i) ? 'lock' : ''}" style="--c:${c}" data-act="glow" data-v="${i}" aria-label="${n}">${locked('glow', i) ? COSTS.glow[i] : ''}</button>`).join('')}</div>
+        <div><div class="label">PATTERN</div>${PATTERNS.map((n, i) => `<button class="chipbtn ${(B.pattern || 0) === i ? 'on' : ''} ${locked('pattern', i) ? 'lock' : ''}" data-act="pattern" data-v="${i}">${n}${locked('pattern', i) ? ' ' + COSTS.pattern[i] + 'G' : ''}</button>`).join('')}</div>
+        <div><div class="label">GEAR</div>${ACCESSORIES.map((n, i) => `<button class="chipbtn ${(B.acc || 0) === i ? 'on' : ''} ${locked('acc', i) ? 'lock' : ''}" data-act="acc" data-v="${i}">${n}${locked('acc', i) ? ' ' + COSTS.acc[i] + 'G' : ''}</button>`).join('')}</div>
+        <div><div class="label">YOUR CATCHPHRASE</div><input id="catchIn" class="txt" maxlength="50" value="${esc(B.catch)}"><div class="btnrow">${btn('NEW QUIRK', 'data-act="quirk"', 'p small')}${btn('RANDOM CATCHPHRASE', 'data-act="catch"', 'p small')}</div></div></div>
       <div class="btnrow">${btn(p.ready ? 'READY!' : 'I AM READY', 'data-act="ready"', p.ready ? 'g' : 'y')}</div>
     </div>
     <div class="side">
@@ -176,8 +227,8 @@ function playScreen() {
   const sceneKey = S.quest + S.sceneId + S.turn;
   if (ui.sceneKey !== sceneKey) {
     ui.sceneKey = sceneKey; ui.zoneKey = ''; ui.fav = null;
-    $('#screen').innerHTML = `<section class="play">
-      <div class="banner"><img src="${backdropURL(sc.th || q.theme, S.turn)}" alt="">
+    $('#screen').innerHTML = `<section class="play ${sc.panels ? 'hascomic' : ''}">
+      <div class="banner">${bannerLayers(sc.th || q.theme, S.turn)}
         <div class="cast">${S.companion ? `<div class="actor ayo">${spriteHTML(S.companion.hero, 92, 'idle')}<small>AYO</small></div>` : ''}${S.order.map(id => { const p = S.players[id]; return `<div class="actor ${id === S.spot ? 'spot' : ''}" id="a-${id}">${id === S.spot ? '<em>SPOTLIGHT</em>' : ''}${spriteHTML(p.hero, 56, id === S.spot ? 'hop' : 'idle')}<small>${esc(p.name)}</small></div>`; }).join('')}</div></div>
       <div class="dialog box" id="dialog"><div class="speaker">${esc(sc.title)}</div><p id="narr"></p><span class="more">▼</span></div>
       <div id="inter"></div>
@@ -187,7 +238,10 @@ function playScreen() {
   $('.play').dataset.sub = S.sub;
   // narration
   let text = fill(sc.t), nk = sceneKey + S.sub;
-  if (S.sub === 'result' && S.vres) { text = fill(sc.choices[S.vres.i].res); }
+  if (S.sub === 'result' && S.vres) {
+    const v = S.vres;
+    text = v.accuse || (v.team && sc.secret) ? v.note : v.team ? 'Every hero did their own part. Here is what the crew built together.' : fill(sc.choices[v.i].res);
+  }
   else if (S.sub === 'roll' && S.roll) text = S.roll.text;
   else if (S.dials.silly && sc.silly && S.sub === 'read') text += ' ' + fill(sc.silly);
   narrate(nk, text);
@@ -212,11 +266,24 @@ function narrate(key, text) {
 
 function interactionHTML(sc) {
   const sub = S.sub, p = me();
-  if (sub === 'read') return lessonCard(sc) + (sc.ch ? `<div class="card box mission"><h4>${KIND_LABEL[sc.ch.kind]}</h4><p>${KIND_BRIEF[sc.ch.kind]}</p><p class="tr">LUCKY TRAIT: <b>${sc.ch.trait}</b></p></div>` : '');
+  if (sub === 'read') return panelsHTML(sc) + fieldCards() + lessonCard(sc) + (sc.ch ? `<div class="card box mission"><h4>${KIND_LABEL[sc.ch.kind]}</h4><p>${KIND_BRIEF[sc.ch.kind]}</p><p class="tr">LUCKY TRAIT: <b>${sc.ch.trait}</b></p></div>` : '');
+  if (sub === 'vote' && sc.accuse) {
+    const others = S.order.map((id, i) => [id, i]).filter(([id]) => id !== pid);
+    return `<div class="choices">${others.map(([id, i]) => `<button class="choice box" data-act="vote" data-i="${i}">${spriteHTML(S.players[id].hero, 34)}<span>${esc(S.players[id].name)} took it</span></button>`).join('')}<button class="choice box" data-act="vote" data-i="${S.order.length}"><b>?</b><span>Nobody. I trust the crew.</span></button></div><div id="status"></div>`;
+  }
   if (sub === 'vote') {
     const mine = null;
-    return `<div class="choices">${sc.choices.map((c, i) => { const ok = availChoice(c); return `<button class="choice box" ${ok ? '' : 'disabled'} data-act="vote" data-i="${i}"><b>${'ABC'[i]}</b><span>${esc(c.l)}${c.needs ? `<em>NEEDS: ${esc(c.needs)}</em>` : ''}${c.coin && c.coin < 0 ? `<em>COST: ${-c.coin} ${esc(quest().coinName || 'COINS')}</em>` : ''}</span></button>`; }).join('')}</div>
+    return (sc.team ? `<div class="card box mission"><h4>${sc.secret ? 'YOUR SECRET CHOICE' : 'EVERYONE PICKS A JOB'}</h4><p>${sc.secret ? 'Only you see what you pick.' : 'Every pick counts! Pick the job you want to do.'}</p></div>` : '') + `<div class="choices">${sc.choices.map((c, i) => { const ok = availChoice(c); return `<button class="choice box" ${ok ? '' : 'disabled'} data-act="vote" data-i="${i}"><b>${'ABC'[i]}</b><span>${esc(c.l)}${c.needs ? `<em>NEEDS: ${esc(c.needs)}</em>` : ''}${c.coin && c.coin < 0 ? `<em>COST: ${-c.coin} ${esc(quest().coinName || 'COINS')}</em>` : ''}</span></button>`; }).join('')}</div>
       <div id="status"></div>`;
+  }
+  if (sub === 'result' && S.vres && S.vres.accuse) {
+    const v = S.vres;
+    return `<div class="tally">${Object.entries(v.byPlayer).map(([id, i]) => `<div class="trow"><div class="who">${S.players[id] ? spriteHTML(S.players[id].hero, 26) : ''}</div><span>${esc(S.players[id]?.name || '')} named ${S.order[i] ? esc(S.players[S.order[i]].name) : 'nobody'}</span></div>`).join('')}</div>${lessonCard(sc)}`;
+  }
+  if (sub === 'result' && S.vres && S.vres.team) {
+    const v = S.vres;
+    if (sc.secret) return `<div class="card box"><h4>THE POUCH</h4><p>${S.coins ?? 0} coins left. The crew will find out more soon.</p></div>${lessonCard(sc)}`;
+    return `<div class="tally">${Object.entries(v.byPlayer).map(([id, i]) => `<div class="trow won"><div class="who">${S.players[id] ? spriteHTML(S.players[id].hero, 30) : ''}</div><b>${'ABCD'[i]}</b><span>${esc(S.players[id]?.name || '')}: ${esc(fill(sc.choices[i].res))}</span></div>`).join('')}</div>${lessonCard(sc)}`;
   }
   if (sub === 'result' && S.vres) {
     const v = S.vres, tot = Math.max(1, Object.keys(v.byPlayer).length);
@@ -277,7 +344,7 @@ function workHTML(sc) {
       ${S.sigil ? `<div class="box pad center"><img class="sigimg" src="${S.sigil}" alt="drawing"></div>` : '<div class="box pad center">WAITING FOR THE DRAWING...</div>'}
       <div class="choices">${S.prompt.o.map((o, i) => `<button class="choice box" ${S.answers[pid] || !S.sigil ? 'disabled' : ''} data-act="ans" data-i="${i}"><b>${'ABCD'[i]}</b><span>${esc(o)}</span></button>`).join('')}</div>${timer}<div id="status"></div>`;
   }
-  if (['trivia', 'math', 'fight'].includes(k)) return `<div class="card box mission"><h4>${KIND_LABEL[k]}</h4>${k === 'fight' && S.prompt.beast ? `<div class="beastrow"><img class="beast" src="${beastURL(S.prompt.seed, 5)}" width="96" alt=""><b>${esc(S.prompt.beast)}</b></div>` : ''}<p class="prompt">${esc(S.prompt.q)}</p></div>
+  if (['trivia', 'math', 'fight'].includes(k)) return `<div class="card box mission"><h4>${KIND_LABEL[k]}</h4>${k === 'fight' && S.prompt.beast ? `<div class="beastrow"><img class="beast" src="${creatureURL(BEAST_KEY[S.prompt.beast] || '', 5, S.prompt.seed)}" width="150" alt=""><b>${esc(S.prompt.beast)}</b></div>` : ''}<p class="prompt">${esc(S.prompt.q)}</p></div>
       <div class="choices">${S.prompt.o.map((o, i) => `<button class="choice box" ${S.answers[pid] ? 'disabled' : ''} data-act="ans" data-i="${i}"><b>${'ABCD'[i]}</b><span>${esc(o)}</span></button>`).join('')}</div>${timer}<div id="status"></div>`;
   return '';
 }
@@ -291,7 +358,7 @@ function swarmHTML(sc) {
       <div class="dice3">${rr ? rr.dice.map(d => `<span class="die set">${d}</span>`).join('') : '<span class="die">?</span><span class="die">?</span><span class="die">?</span>'}</div>
       <div class="bon show">${rr ? `<b>${rr.hits} HITS</b>` : ''}</div></div>`; }).join('');
   const allies = r ? r.allyHits / 2 : 0;
-  const result = r ? `<div class="result show" id="result"><div class="legend">BEASTS ${r.beasts}: HEROES ${r.rolls.reduce((a, x) => a + x.hits, 0)} + COINS+ECHO ${r.coinHits} + ALLIES ${r.allyHits} (${allies}) = ${r.total}</div>
+  const result = r ? `<div class="result show" id="result"><div class="legend">BEASTS ${r.beasts}: HEROES ${r.rolls.reduce((a, x) => a + x.hits, 0)} + COINS+ECHO ${r.coinHits} + ALLIES ${r.allyHits} (${allies})${r.perkHits ? ` + TEAM JOBS ${r.perkHits}` : ''}${r.beastCut ? ` (GUARDS CUT ${r.beastCut})` : ''}${r.beastAdd ? ` (SOUR NOTE +${r.beastAdd} BEASTS)` : ''} = ${r.total}</div>
     <div class="outcome ${r.outcome}">${r.left <= 0 ? 'ALL BEASTS UN-SCRAMBLED!' : r.left + ' BEASTS LEFT'}</div></div>` : '';
   return `<div class="card box"><h4>THE SWARM: ${beasts} GLITCH BEASTS</h4><div class="swarm">${Array.from({ length: beasts }, (_, i) => `<img src="${beastURL(i + 1, 2)}" width="36" class="${r && i >= r.left ? 'gone' : ''}" alt="">`).join('')}</div>
     <p>Saved coins: <b>${S.coins ?? 0}</b>. Allies: <b>${S.items.filter(i => quest().allies.includes(i)).join(', ') || 'none'}</b>${S.companion ? ' + AYO' : ''}.</p></div>
@@ -352,9 +419,10 @@ function hostBar(sc) {
 
 function endScreen() {
   const e = S.ending, q = quest(), sc = scene();
-  return `<section class="end"><div class="banner small"><img src="${backdropURL(sc.th, 9)}" alt=""></div>
+  return `<section class="end"><div class="banner small">${bannerLayers(sc.th, 9)}</div>
     <div class="box pad endbox ${e.kind}"><div class="label">QUEST COMPLETE</div><h2>${esc(sc.title)}</h2><p>${esc(fill(sc.t))}</p>
-      <div class="hearts">${hearts(S.spirit)}<span>CREW SPIRIT</span></div>
+      <div class="hearts">${hearts(S.spirit)}<span>CREW SPIRIT</span></div>${S.gemsEarned ? `<p class="note center">YOU EARNED <b>${S.gemsEarned}</b> SPIRIT GEMS! Spend them on gear in the hero builder.</p>` : ''}
+      ${(S.thiefReveal || []).length ? `<p class="note center">THE SHADOW WAS: ${S.thiefReveal.map(id => esc(S.players[id]?.name || '?')).join(' and ')}${(S.caught || []).length ? ' (CAUGHT!)' : ' (NEVER CAUGHT!)'}</p>` : ''}
       ${S.items.length ? `<div class="items">ITEMS: ${S.items.map(i => `<span>${esc(i)}</span>`).join('')}</div>` : ''}</div>
     <div class="box pad podium"><div class="label">THE HEROES</div><div class="heroes">${S.order.map(id => { const p = S.players[id]; return `<div class="hh big">${spriteHTML(p.hero, 100, 'hop')}<b>${esc(p.name)}</b><small>THE ${CLASS[p.hero.cls].name}</small>${(S.awards?.[id] || []).map(a => `<span class="award">${a}</span>`).join('')}</div>`; }).join('')}</div></div>
     ${isHost ? `<div class="startbox">${btn('PLAY ANOTHER QUEST', 'data-act="pick"', 'y big')}${btn('NEW HEROES', 'data-act="tolobby"', 'c small')}</div>` : '<div class="note center">WAITING FOR THE HOST...</div>'}</section>`;
@@ -363,10 +431,10 @@ function endScreen() {
 function hudHTML() {
   const q = quest(), play = S.phase === 'play' || S.phase === 'end';
   const est = q ? q.est[S.len] : 1, pct = S.phase === 'end' ? 100 : S.clockEnd ? Math.min(95, Math.round(100 - Math.max(0, S.clockEnd - now()) / (S.sel.mins * 600))) : Math.min(95, Math.round(S.visited / est * 100));
-  return `<div class="hudin"><div class="hq">${play ? esc(q.short) : 'KINSHIP QUEST'}</div>
+  return `<div class="hudin"><div class="hq">${play ? esc(q.short) : 'KINSHIP QUEST'}${play && q.mission ? `<small class="mis">MISSION: ${esc(q.mission)}</small>` : ''}</div>
     ${play ? `${S.chapTotal ? `<div class="coins">CH <b>${Math.min(S.chap, S.chapTotal)}/${S.chapTotal}</b></div>` : ''}<div class="prog" title="Progress"><i style="width:${pct}%"></i></div><div class="hearts">${hearts(S.spirit)}</div>${S.coins != null ? `<div class="coins"><b>${S.coins}</b> COINS</div>` : ''}${S.clockEnd ? `<div class="coins"><b>${fmtTime(S.clockEnd - now())}</b></div>` : ''}` : `<div class="roomtag">ROOM <b>${esc(room)}</b></div>`}
-    <button class="mini" data-act="mute" aria-label="sound">${isMuted() ? 'SOUND OFF' : 'SOUND ON'}</button><button class="mini" data-act="leave" aria-label="exit">EXIT</button></div>
-    ${play && S.items.length ? `<div class="invbar">ITEMS: ${S.items.map(i => `<span>${esc(i)}</span>`).join('')}</div>` : ''}`;
+    <button class="mini" data-act="mute" aria-label="sound">${isMuted() ? 'SOUND OFF' : 'SOUND ON'}</button><button class="mini" data-act="musictoggle" aria-label="music">${musicEnabled() ? 'MUSIC ON' : 'MUSIC OFF'}</button><button class="mini" data-act="leave" aria-label="exit">EXIT</button></div>
+    ${play && S.items.length ? `<div class="invbar">ITEMS: ${S.items.map(i => `<span>${esc(i === 'Overdrive Core' ? (S.coreMissed ? 'OVERDRIVE CORE (DIM)' : 'OVERDRIVE CORE (ON)') : i)}</span>`).join('')}</div>` : ''}`;
 }
 
 function parentHTML() {
@@ -419,6 +487,56 @@ function chaosCheck() {
   const el = $('#chaos'); el.innerHTML = `<div class="box"><h4>CHAOS CARD!</h4><p>${esc(S.chaos.text)}</p><button class="btn y small" data-act="chaosx">GOT IT</button></div>`; el.classList.remove('hidden');
 }
 
+// ---- Spirit Gems: unlockable cosmetics saved on this device ----
+const gems = () => { try { return +localStorage.getItem('kq-gems') || 0; } catch (e) { return 0; } };
+const setGems = n => { try { localStorage.setItem('kq-gems', String(n)); } catch (e) {} };
+const unlocks = () => { try { return JSON.parse(localStorage.getItem('kq-unlocks') || '[]'); } catch (e) { return []; } };
+const locked = (type, i) => !!(COSTS[type] && COSTS[type][i]) && !unlocks().includes(type + i);
+function buy(type, i) {
+  if (!locked(type, i)) return true;
+  const cost = COSTS[type][i];
+  if (gems() < cost) { toast('That gear costs ' + cost + ' Spirit Gems. You have ' + gems() + '. Finish quests to earn more!'); sfx.oops(); return false; }
+  setGems(gems() - cost); try { localStorage.setItem('kq-unlocks', JSON.stringify([...unlocks(), type + i])); } catch (e) {} toast('Unlocked! -' + cost + ' gems'); sfx.great(); return true;
+}
+function awardGems() {
+  const key = room + '|' + S.turn + '|' + S.ending.id; if (awardGems.k === key) return; awardGems.k = key;
+  const n = 2 + S.spirit + (S.ending.kind === 'triumph' ? 2 : 0) + (S.awards?.[pid] || []).filter(a => a !== 'LEGEND IN TRAINING').length;
+  setGems(gems() + n); S.gemsEarned = n; setTimeout(() => floatText('+' + n + ' SPIRIT GEMS', '#2de2e6'), 600);
+}
+
+// ---- game feel: floating numbers, screen shake, confetti ----
+const JUICE = { prev: null, roll: 0 };
+function floatText(text, color) {
+  const el = document.createElement('div'); el.className = 'float'; el.textContent = text; el.style.color = color;
+  el.style.left = (30 + Math.random() * 40) + '%'; document.body.appendChild(el); setTimeout(() => el.remove(), 1600);
+}
+function confetti(n = 36) {
+  const cols = ['#e0392f', '#ffd23f', '#2fb25a', '#2de2e6', '#ff6fb5', '#fff7e0'];
+  for (let i = 0; i < n; i++) { const el = document.createElement('i'); el.className = 'conf'; el.style.left = Math.random() * 100 + '%'; el.style.background = cols[i % cols.length]; el.style.animationDelay = Math.random() * .4 + 's'; el.style.animationDuration = 1.4 + Math.random() * 1.2 + 's'; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
+}
+function shake() { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); setTimeout(() => document.body.classList.remove('shake'), 450); }
+function juice() {
+  if (!S || S.phase !== 'play' && S.phase !== 'end') { JUICE.prev = null; return; }
+  const p = JUICE.prev;
+  if (p && p.room === room) {
+    if ((S.coins ?? 0) !== p.coins) { const d = (S.coins ?? 0) - p.coins; floatText((d > 0 ? '+' : '') + d + ' COINS', d > 0 ? '#ffd23f' : '#ff8a7a'); d > 0 ? sfx.blip() : 0; }
+    if (S.spirit !== p.spirit) { const d = S.spirit - p.spirit; floatText((d > 0 ? '+' : '') + d + ' SPIRIT', d > 0 ? '#5fe36b' : '#ff3b5c'); if (d < 0) shake(); else confetti(16); }
+    S.items.filter(i => !p.items.includes(i)).forEach(i => floatText('+ ' + i.toUpperCase(), '#2de2e6'));
+  }
+  if (S.roll && S.roll.at !== JUICE.roll) { JUICE.roll = S.roll.at; const o = S.roll.outcome; setTimeout(() => { if (o === 'great') confetti(48); else if (o === 'oops') shake(); }, 1800); }
+  if (S.phase === 'end' && !JUICE.ended) { JUICE.ended = true; if (S.ending.kind === 'triumph') confetti(70); } else if (S.phase !== 'end') JUICE.ended = false;
+  JUICE.prev = { room, coins: S.coins ?? 0, spirit: S.spirit, items: [...S.items] };
+}
+
+function syncMusic() {
+  if (!S || !musicEnabled() || isMuted()) return;
+  music.start();
+  let m = 'market';
+  if (S.phase === 'end') m = S.ending.kind === 'triumph' ? 'win' : 'calm';
+  else if (S.phase === 'play') { const sc = scene(); m = sc?.ch && ['fight', 'swarm'].includes(sc.ch.kind) && S.sub !== 'read' ? 'battle' : (MOOD_BY_THEME[sc?.th] || 'calm'); }
+  music.setMood(m);
+}
+
 function render() {
   const screen = $('#screen'), hud = $('#hud');
   if (view === 'title') { hud.classList.add('hidden'); if (ui.zoneKey !== 'title') { ui.zoneKey = 'title'; ui.sceneKey = ''; screen.innerHTML = titleScreen(); } return; }
@@ -428,7 +546,8 @@ function render() {
   if (S.phase === 'lobby') { ui.sceneKey = ''; ui.zoneKey = ''; if (document.activeElement?.tagName === 'INPUT') return; screen.innerHTML = lobbyScreen(); }
   else if (S.phase === 'pick') { ui.sceneKey = ''; ui.zoneKey = ''; B = null; screen.innerHTML = pickScreen(); }
   else if (S.phase === 'play') playScreen();
-  else if (S.phase === 'end') { const k = 'end' + S.ending.id; if (ui.zoneKey !== k) { ui.zoneKey = k; ui.sceneKey = ''; screen.innerHTML = endScreen(); sfx.win(); } }
+  else if (S.phase === 'end') { const k = 'end' + S.ending.id; if (ui.zoneKey !== k) { ui.zoneKey = k; ui.sceneKey = ''; awardGems(); screen.innerHTML = endScreen(); sfx.win(); } }
+  syncMusic(); juice();
   const pp = $('#parent'); if (ui.parentOpen && isHost) { pp.innerHTML = parentHTML(); pp.classList.remove('hidden'); } else pp.classList.add('hidden');
 }
 
@@ -439,12 +558,19 @@ const actions = {
   cont() { const s = loadSession(); if (s) start(s.room, s.name, s.isHost); },
   leave() { if (!S || confirm('Leave this game?')) leave(); },
   mute() { setMuted(!isMuted()); render(); },
+  musictoggle() { setMusic(!musicEnabled()); if (musicEnabled()) music.start(); render(); },
   hair(el) { B.hair = +el.dataset.v; sendHero(); sfx.blip(); },
   mode(el) { cmd('select', { quest: S.sel.quest, mode: el.dataset.v, len: S.sel.len, mins: S.sel.mins }); sfx.blip(); },
   mins(el) { cmd('select', { quest: S.sel.quest, mode: 'clock', len: S.sel.len, mins: +el.dataset.v }); sfx.blip(); },
   cls(el) { B.cls = el.dataset.v; B.quirk = B.quirk; sendHero(); sfx.select(); },
   skin(el) { B.skin = +el.dataset.v; sendHero(); sfx.blip(); },
   outfit(el) { B.outfit = +el.dataset.v; sendHero(); sfx.blip(); },
+  trim(el) { B.trim = +el.dataset.v; sendHero(); sfx.blip(); },
+  glow(el) { if (!buy('glow', +el.dataset.v)) return; B.glow = +el.dataset.v; sendHero(); sfx.blip(); },
+  pattern(el) { if (!buy('pattern', +el.dataset.v)) return; B.pattern = +el.dataset.v; sendHero(); sfx.blip(); },
+  acc(el) { if (!buy('acc', +el.dataset.v)) return; B.acc = +el.dataset.v; sendHero(); sfx.blip(); },
+  quirk() { B.quirk = QUIRKS[Math.floor(Math.random() * QUIRKS.length)]; sendHero(); sfx.blip(); },
+  catch() { B.catch = CATCHES[Math.floor(Math.random() * CATCHES.length)]; sendHero(); sfx.blip(); },
   
   ready() { act('ready', { v: !me().ready }); me().ready ? sfx.back() : sfx.ready(); },
   copy() { navigator.clipboard?.writeText(inviteLink()).then(() => toast('Invite link copied!'), () => toast(inviteLink())); },
@@ -488,6 +614,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'nameIn') ($('#codeIn').value ? actions.join : actions.new)();
   if (e.key === 'Enter' && e.target.id === 'txt' && !e.shiftKey) { e.preventDefault(); actions['send-text'](); }
 });
+document.addEventListener('change', e => { if (e.target.id === 'catchIn' && B) { B.catch = e.target.value.slice(0, 50) || B.catch; sendHero(); } });
 document.addEventListener('input', e => { if (e.target.id === 'codeIn') e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
 
 startStars($('#stars'));

@@ -1,0 +1,8 @@
+<!doctype html><body style="background:#14082e;color:#fff;font:12px monospace;image-rendering:pixelated"><div id=o></div>
+<script type=module>
+import {creatureURL, backdropURL} from '/js/sprites.js';
+const o=document.getElementById('o');
+for (const k of ['hound','pup','serpent','collector','mo','maglev']) o.innerHTML+=`<div style="display:inline-block;margin:8px;text-align:center"><img src="${creatureURL(k,6)}" style="image-rendering:pixelated"><br>${k}</div>`;
+o.innerHTML+='<br>';
+for (const t of ['night','rail','skycity','market','weave','hall']) o.innerHTML+=`<img src="${backdropURL(t,3)}" style="width:480px;image-rendering:pixelated;margin:4px">`;
+</script>

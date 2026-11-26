@@ -147,7 +147,7 @@ button:disabled { cursor: not-allowed; }
 .hh.big { width: 130px; gap: 2px; } .hh.big b { font-weight: normal; color: var(--yellow); } .award { display: block; font: 7px 'Press Start 2P'; line-height: 1.5; background: var(--pink); color: var(--ink); padding: 4px 6px; margin-top: 4px; }
 
 /* ---- play ---- */
-.banner { position: relative; margin: 6px; box-shadow: 0 -4px 0 0 var(--cream), 0 4px 0 0 var(--cream), -4px 0 0 0 var(--cream), 4px 0 0 0 var(--cream), 10px 10px 0 0 rgba(0, 0, 0, .45); background: var(--ink); }
+.banner { position: relative; overflow: hidden; margin: 6px; box-shadow: 0 -4px 0 0 var(--cream), 0 4px 0 0 var(--cream), -4px 0 0 0 var(--cream), 4px 0 0 0 var(--cream), 10px 10px 0 0 rgba(0, 0, 0, .45); background: var(--ink); }
 .banner > img { width: 100%; display: block; aspect-ratio: 160 / 64; }
 /* compact banner while players are working so the activity stays on screen */
 .play:not([data-sub=read]):not([data-sub=result]) .banner > img { aspect-ratio: 160 / 30; object-fit: cover; object-position: center bottom; }
@@ -261,3 +261,64 @@ button:disabled { cursor: not-allowed; }
 
 .quest.soon { position: relative; opacity: .6; filter: saturate(.55); cursor: default; }
 .quest.soon .badge { position: absolute; top: 8px; right: 8px; font: 8px 'Press Start 2P'; background: var(--pink); color: var(--ink); padding: 6px 8px; z-index: 2; }
+
+/* v4 */
+.txt { width: 100%; box-sizing: border-box; font-family: 'VT323', monospace; font-size: 22px; padding: 6px 8px; background: #0d0a1f; color: #fff7e0; border: 2px solid #5b4aa8; }
+.swatches > div { margin-top: 12px; }
+.trow .who { display: flex; gap: 4px; align-items: center; }
+
+/* v5: comic panels, field guide, 90s look */
+.hascomic[data-sub=read] .banner { display: none; }
+.comic { display: grid; gap: 8px; margin: 8px 6px; }
+@media (min-width: 760px) { .comic.c3 { grid-template-columns: repeat(3, 1fr); } .comic.c2 { grid-template-columns: repeat(2, 1fr); } }
+.panel { position: relative; margin: 0; aspect-ratio: 5 / 4; overflow: hidden; background: #000; box-shadow: 0 0 0 4px #000, 0 0 0 7px var(--cream), 8px 8px 0 7px rgba(0, 0, 0, .45); }
+.comic.c1 .panel { aspect-ratio: 16 / 7; }
+.panel .bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.panel .lay { position: absolute; height: auto; }
+.panel img.lay { image-rendering: pixelated; }
+.lay.crew { display: flex; align-items: flex-end; gap: 1%; }
+.lay.crew img { flex: 1 1 0; min-width: 0; max-width: 34%; height: auto; }
+.lay.tilt { transform: rotate(-14deg); animation: hop .5s steps(2) infinite; }
+.panel figcaption { position: absolute; left: 0; right: 0; bottom: 0; background: #ffe27a; color: #0d0a1f; font: 9px/1.5 'Press Start 2P', monospace; padding: 6px 8px; border-top: 3px solid #000; }
+.panel.shake { animation: shake .35s steps(2) infinite; }
+@keyframes shake { 0% { transform: translate(0, 0); } 50% { transform: translate(-3px, 2px); } 100% { transform: translate(3px, -2px); } }
+.guide { display: flex; gap: 12px; align-items: center; padding: 10px; margin: 8px 6px; }
+.guide img { width: 130px; height: auto; flex: none; animation: hop .8s steps(2) infinite; }
+.guide h4 { font: 10px 'Press Start 2P', monospace; color: var(--gold, #ffd23f); margin: 0 0 6px; }
+.guide p { margin: 4px 0; font: 20px/1.1 'VT323', monospace; }
+.guide .weak { color: #2de2e6; }
+.hq .mis { display: block; font: 8px 'Press Start 2P', monospace; color: #2de2e6; margin-top: 3px; }
+
+/* v5.1: sticker rim so dark skin pops on dark backdrops */
+.spr, .actor img, .panel .lay img, .panel img.lay, .member img, .guide img, .beast {
+  filter: drop-shadow(2px 0 0 #fff2c8) drop-shadow(-2px 0 0 #fff2c8) drop-shadow(0 2px 0 #fff2c8) drop-shadow(0 -2px 0 #fff2c8);
+}
+.panel .lay.crew::before { content: ''; position: absolute; inset: -30% -20% -10%; background: radial-gradient(closest-side, rgba(255, 200, 90, .35), transparent); z-index: -1; }
+
+/* v6: living stage */
+.banner > img.far { width: 114%; max-width: none; animation: drift 46s ease-in-out infinite alternate; }
+.banner > img.near { position: absolute; left: 0; bottom: 0; width: 130%; max-width: none; height: auto; aspect-ratio: 256 / 40; animation: drift 24s ease-in-out infinite alternate-reverse; z-index: 1; }
+.banner > canvas.fx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+.banner .cast { z-index: 2; }
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(-12%); } }
+.panel .bg { animation: pan 18s ease-in-out infinite alternate; transform-origin: center; }
+@keyframes pan { from { transform: scale(1.02) translateX(0); } to { transform: scale(1.1) translateX(-3%); } }
+
+/* v6: juice */
+.float { position: fixed; top: 22%; z-index: 90; font: 16px 'Press Start 2P', monospace; text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000; pointer-events: none; animation: floatup 1.5s ease-out forwards; white-space: nowrap; }
+@keyframes floatup { 0% { transform: translateY(20px) scale(.6); opacity: 0; } 15% { transform: translateY(0) scale(1.15); opacity: 1; } 100% { transform: translateY(-90px) scale(1); opacity: 0; } }
+.conf { position: fixed; top: -12px; width: 9px; height: 9px; z-index: 89; pointer-events: none; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(105vh) rotate(540deg); } }
+body.shake { animation: bodyshake .4s steps(2); }
+@keyframes bodyshake { 0% { transform: translate(0, 0); } 25% { transform: translate(-6px, 3px); } 50% { transform: translate(5px, -4px); } 75% { transform: translate(-4px, -2px); } 100% { transform: translate(0, 0); } }
+
+.gembar { font: 10px 'Press Start 2P', monospace; color: #2de2e6; margin: 0 0 8px; } .gembar small { display: block; color: #bfb6e8; font: 18px 'VT323', monospace; margin-top: 4px; }
+.sw.lock, .chipbtn.lock { opacity: .55; position: relative; } .sw.lock { font: 9px 'Press Start 2P', monospace; color: #fff; text-shadow: 1px 1px 0 #000; }
+/* kente-inspired trim */
+#hud { border-image: repeating-linear-gradient(90deg, #e0392f 0 14px, #ffd23f 14px 28px, #2fb25a 28px 42px, #0d0a1f 42px 56px) 4; border-bottom: 4px solid; }
+.box { position: relative; }
+
+.gembar { font: 10px 'Press Start 2P', monospace; color: #2de2e6; margin: 0 0 8px; } .gembar small { display: block; color: #bfb6e8; font: 18px 'VT323', monospace; margin-top: 4px; }
+.sw.lock, .chipbtn.lock { opacity: .55; position: relative; } .sw.lock { font: 9px 'Press Start 2P', monospace; color: #fff; text-shadow: 1px 1px 0 #000; }
+/* kente-inspired trim */
+#hud { border-image: repeating-linear-gradient(90deg, #e0392f 0 14px, #ffd23f 14px 28px, #2fb25a 28px 42px, #0d0a1f 42px 56px) 4; border-bottom: 4px solid; }

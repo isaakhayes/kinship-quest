@@ -16,11 +16,12 @@ for (const qid of Object.keys(QUESTS)) for (const len of [1, 2, 3]) for (let run
   ids.forEach(id => h.handle({ t: 'act', pid: id, a: 'ready', v: true }));
   const host = c => h.handle({ t: 'act', pid: 'p0', a: 'host', ...c });
   host({ cmd: 'pick' }); host({ cmd: 'select', quest: qid, len, mode: run % 2 ? 'clock' : 'chapters', mins: [20, 40, 60][len - 1] }); host({ cmd: 'begin' });
-  const seen = []; let steps = 0;
+  const seen = []; let steps = 0; let sawThief = false;
   while (h.G.phase === 'play' && steps++ < 200) {
     const G = h.G, sc = h.scene();
     if (!seen.includes(G.sceneId)) seen.push(G.sceneId);
-    if (G.sub === 'vote') ids.forEach(id => { const opts = sc.choices.map((c, i) => i).filter(i => h.avail(sc.choices[i])); h.handle({ t: 'act', pid: id, a: 'vote', i: pick(opts) }); });
+    if (G.sub === 'vote' && sc.accuse) ids.forEach(id => { const opts = [...Array(G.order.length + 1).keys()].filter(i => G.order[i] !== id); h.handle({ t: 'act', pid: id, a: 'vote', i: pick(opts) }); });
+    else if (G.sub === 'vote') ids.forEach(id => { const opts = sc.choices.map((c, i) => i).filter(i => h.avail(sc.choices[i])); h.handle({ t: 'act', pid: id, a: 'vote', i: pick(opts) }); });
     if (G.sub === 'work') {
       const k = sc.ch.kind;
       ids.forEach(id => {
@@ -37,6 +38,7 @@ for (const qid of Object.keys(QUESTS)) for (const len of [1, 2, 3]) for (let run
     host({ cmd: 'next' });
     if (sc.ch && G.sub === 'roll' && G.roll) { /* next call continues */ }
   }
+  if (n >= 2 && len >= 2 && !seen.includes('tw_tempt')) { bad++; console.log('NO THIEF SCENE', qid, len, n, seen.join('>')); }
   if (h.G.phase !== 'end') { bad++; console.log('STUCK', qid, len, 'scene', h.G.sceneId, h.G.sub, 'steps', steps); }
   else if (run === 0) console.log(qid, 'len', len, 'players', n, 'scenes', seen.length, seen.join('>'), '=>', h.G.ending.id, 'spirit', h.G.spirit);
   h.stop();

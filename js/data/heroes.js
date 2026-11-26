@@ -20,6 +20,13 @@ export const SKINS = ['#3f2416', '#5a3520', '#7a4a2a', '#9a6238', '#bb7f4a', '#d
 export const HAIRS = ['AFRO', 'LOCS', 'BRAIDS', 'WRAP', 'PUFFS', 'FADE'];
 export const OUTFITS = ['#ff3b5c', '#ff8a1f', '#ffd23f', '#5fe36b', '#2de2e6', '#4d7cff', '#b266ff', '#ff6fb5'];
 
+export const PATTERNS = ['PLAIN', 'STRIPES', 'ZIGZAG', 'DIAMONDS', 'DOTS'];
+export const ACCESSORIES = ['NONE', 'GOGGLES', 'HEADBAND', 'CROWN', 'EARRINGS', 'FACE PAINT', 'SCARF', 'CAPE', 'SHOULDER PADS'];
+export const GLOWS = [['#2de2e6', 'CYAN'], ['#ffd23f', 'GOLD'], ['#ff6fb5', 'PINK'], ['#5fe36b', 'GREEN'], ['#b266ff', 'PURPLE'], ['#ff3b5c', 'RED']];
+
+// Spirit Gem costs to unlock cosmetics (saved on each player's own device)
+export const COSTS = { acc: { 3: 5, 5: 2, 7: 4, 8: 3 }, glow: { 4: 3, 5: 3 }, pattern: { 3: 3, 4: 2 } };
+
 export const QUIRKS = [
   'Hums a different song for every mood', 'Always carries one extra snack', 'Names every machine they meet',
   'Cannot walk past a puddle without checking it', 'Talks to the stars like old friends', 'Collects shiny bolts and bottle caps',
@@ -42,6 +49,7 @@ export function rollHero(takenClasses = []) {
     skin: Math.floor(Math.random() * SKINS.length),
     hair: Math.floor(Math.random() * HAIRS.length),
     outfit: Math.floor(Math.random() * OUTFITS.length),
+    trim: 2, pattern: 0, acc: 0, glow: 0,
     quirk: pick(QUIRKS),
     catch: pick(CATCHES)
   };
@@ -50,6 +58,7 @@ export function rollHero(takenClasses = []) {
 export function validHero(h) {
   const ok = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
   return h && CLASS[h.cls] && ok(h.skin, SKINS.length) && ok(h.hair, HAIRS.length) && ok(h.outfit, OUTFITS.length) &&
+    (h.trim == null || ok(h.trim, OUTFITS.length)) && (h.pattern == null || ok(h.pattern, PATTERNS.length)) && (h.acc == null || ok(h.acc, ACCESSORIES.length)) && (h.glow == null || ok(h.glow, GLOWS.length)) &&
     typeof h.quirk === 'string' && typeof h.catch === 'string';
 }
 

@@ -8,10 +8,14 @@ export default {
   blurb: 'The Great Drum that keeps Ndoto City together has gone quiet. Glitch Beasts are creeping in from the Weave. Ayo the courier needs a crew. Hurry up!',
   est: { 1: 10, 2: 13, 3: 16 },
   coins: 10,
-  allies: ['Sefu', 'Builder Crew', 'Kwesi', 'Glow Pup', 'Mystery Charm'],
+  mission: 'WAKE THE DRUM',
+  fixed: [{ before: 'door', scene: 'bell1', item: 'Overdrive Core' }, { before: 'prep', scene: 'bell2', item: 'Overdrive Core' }],
+  allies: ['Sefu', 'Builder Crew', 'Glow Pup', 'Mystery Charm'],
   twists: {
     pup: { before: 'earn', scene: 'tw_pup' },
-    storm: { before: 'serpent', scene: 'tw_storm' },
+    thief: { before: 'sigil', scene: 'tw_tempt', players: 2 },
+    storm: { before: 'door', scene: 'tw_storm' },
+    accuse: { before: 'serpent', scene: 'tw_accuse', needs: 'thief' },
     trickster: { before: 'prep', scene: 'tw_trick' }
   },
   rush: 'prep',
@@ -19,8 +23,30 @@ export default {
   start: 'intro',
   scenes: {
     intro: {
-      th: 'skycity', title: 'AYO NEEDS YOU',
-      t: 'A courier on a glowing sail board skids to a stop in front of you. "I am Ayo! The Great Drum of Ndoto City has gone silent, and Glitch Beasts are slipping out of the Weave. Without the Drum the city forgets how to work together. I need a crew. Hurry up!"',
+      th: 'night', title: 'THE FALL', meets: ['hound'],
+      panels: [
+        { th: 'night', seed: 11, cap: 'THE SKYLINE HAULER. 400 MILES AN HOUR. YOU ARE STOWED IN CRATE NINE.', layers: [{ k: 'c:maglev', x: 8, y: 52, w: 82 }, { k: 'crew', x: 18, y: 46, w: 40 }] },
+        { th: 'night', seed: 14, shake: true, cap: 'SOMETHING LANDS ON THE ROOF.', layers: [{ k: 'c:maglev', x: 2, y: 62, w: 96 }, { k: 'c:hound', x: 30, y: 10, w: 46 }] },
+        { th: 'skycity', seed: 6, shake: true, cap: 'THE CARS TEAR LOOSE. THE CITY IS 300 FEET BELOW.', layers: [{ k: 'crew', x: 10, y: 34, w: 70, tilt: true }] }
+      ],
+      t: 'You are stowed in crate nine on the Skyline Hauler, racing over Ndoto City. Then the roof screams. A Static Hound lands and the car tears loose!',
+      next: 'fall'
+    },
+    fall: {
+      th: 'skycity', title: 'THE DROP', noch: true, team: true,
+      t: 'You are falling. Everybody moves at once. Pick your move, because every move counts!',
+      choices: [
+        { l: 'Leap for the sail board streaking past', res: 'You launch. A glowing board scoops you up mid-air and somebody laughs in your ear.', next: 'pitch' },
+        { l: 'Kick the Hound off the car', res: 'THUNK. The Hound tumbles away, zapping your boots on the way out.', next: 'pitch' },
+        { l: 'Dive into the cargo crate', res: 'You slam the lid. The crate bounces, rattles, and spits you out with bruises.', next: 'pitch' }
+      ],
+      next: 'pitch'
+    },
+    pitch: {
+      th: 'rail', title: 'AYO SAVES YOU', noch: true, on: { spirit: -1 },
+      panels: [{ th: 'rail', seed: 9, cap: 'AYO, COURIER OF NDOTO.', layers: [{ k: 'ayo', x: 30, y: 28, w: 24 }, { k: 'crew', x: 4, y: 52, w: 56 }] }],
+      t: 'Ayo, a courier on a patched sail board, hauls you aboard. "I will get you out, but I need your help. The Great Drum has gone silent. Reach the Drum Hall with me, or those things will hunt us again." The board coughs smoke. "We have ten coins. We need an edge."',
+      lesson: { v: 'UNITY', tip: 'Strangers become a crew when they help each other first.', ask: 'When did someone help you before you could help them back?' },
       next: 'c1'
     },
     c1: {
@@ -47,12 +73,14 @@ export default {
       next: 'loan'
     },
     loan: {
-      th: 'market', title: 'BABA KWESI\'S OFFER',
-      t: 'The Sunday Market is loud and warm. An old trader, Baba Kwesi, waves you over. "Young heroes! You need coins to get through the Weave. I will lend you 25 coins today. When you come back, you pay me 50. Fair deal?"',
-      lesson: { v: 'ECONOMY', tip: 'Borrowed coins must be paid back, and sometimes with extra. Plan before you spend.', ask: 'If you borrow 25 and owe 50, how much extra is that?' },
+      th: 'market', title: 'BIG MO\'S DEAL', meets: ['mo'],
+      panels: [{ th: 'market', seed: 21, cap: 'BIG MO. BEST WEAPONS IN NDOTO.', layers: [{ k: 'c:mo', x: 56, y: 12, w: 34 }, { k: 'crew', x: 4, y: 54, w: 44 }] }],
+      t: 'Big Mo steps out of the crowd, holding a sword of pure light. "The Overdrive Core beats anything in this city. Fifty coins, normally. For you, ten a bell." He grins. "Miss one and it dims. Miss two and my Collectors visit."',
+      lesson: { v: 'ECONOMY', tip: 'A great deal can still cost you every week.', ask: 'What is something you wanted that ended up costing more than the price tag?' },
       choices: [
-        { l: 'Accept the 25 coin loan', res: 'Baba Kwesi presses 25 coins into your hands. "Remember. Fifty back."', coin: 25, give: 'Kwesi Loan', next: 'shop' },
-        { l: 'Politely say no thanks', res: 'Baba Kwesi laughs. "A careful crew! My stall is open anyway."', next: 'shop' }
+        { l: 'Take the Core (10 coins each bell)', res: 'The Core snaps onto your weapon and hums. Big Mo winks. "Ten at the next bell. Do not forget."', give: 'Overdrive Core', next: 'shop' },
+        { l: 'Pay 50 coins now', res: 'Big Mo whistles. "Cash in hand. I like you." The Core is yours for good.', coin: -50, give: 'Overdrive Core', fixcore: true, next: 'shop' },
+        { l: 'No thanks, we do this the scrappy way', res: 'Big Mo laughs. "Scrappy! Good luck with that." The crew stands a little taller.', spirit: 1, next: 'shop' }
       ]
     },
     shop: {
@@ -67,13 +95,9 @@ export default {
     },
     earn: {
       th: 'market', title: 'THE MARKET JOB',
-      t: 'A stall owner needs help counting change for a long line of customers. Each right answer earns the crew coins. Pay attention to the math!',
+      t: 'A stall owner needs sharp heads for a big deal. Discounts, profits, and tricky pricing, and everyone answers on their own screen. Each right answer earns the crew coins!',
       lesson: { v: 'WORK', tip: 'Working together gets more done, and fair work earns fair pay.', ask: 'What job at home is easier when everyone helps?' },
-      ch: { kind: 'math', trait: 'CLEVER', p: [
-        { q: 'A customer pays 20 coins for a mask that costs 14. How much change?', o: ['4', '6', '8', '10'], a: 1 },
-        { q: 'Three friends each buy a drum charm for 5 coins. How many coins in all?', o: ['10', '12', '15', '20'], a: 2 },
-        { q: 'You have 30 coins and spend 12. How many are left?', o: ['16', '18', '20', '22'], a: 1 }
-      ] },
+      ch: { kind: 'math', trait: 'CLEVER', gen: ['percentOff', 'multiStep', 'unitPrice', 'orderOps', 'change'], p: [{}] },
       outCoin: { great: 30, ok: 20, oops: 10 },
       lanternBonus: { item: 'Glow Lantern', coin: 5 },
       out: {
@@ -85,7 +109,7 @@ export default {
     },
     sigil: {
       th: 'hall', title: 'THE GATE OF SIGNS', min: 2, skip: 'serpent',
-      t: 'The way to the Drum Hall is a gate with a glowing lock. {spot} sees the sign on a secret screen and draws it. Everyone else must pick the sign that matches. The lock only opens for the right answer.',
+      t: 'The way to the Drum Hall is a gate with a glowing lock. {spot} sees the sign on a secret screen and draws it. Everyone else picks the sign that matches.',
       lesson: { v: 'CREATIVITY', tip: 'A drawing is a message. Making something new helps others understand.', ask: 'What is the best thing you have ever made?' },
       ch: { kind: 'sigil', trait: 'CLEVER', p: [
         { t: 'a sun with three rays', o: ['Sun with 3 rays', 'Moon', 'Square', 'Wave'], a: 0 },
@@ -101,7 +125,7 @@ export default {
     },
     sefu: {
       th: 'hall', title: 'SEFU THE DRUMMER', min: 2, skip: 'serpent',
-      t: 'Inside the hall, a young drummer named Sefu sits beside the Great Drum, sticks in his lap. "I forgot how to start the beat," he whispers. "I know I cannot do it alone."',
+      t: 'A young drummer named Sefu sits beside the Great Drum. "Last Festival the Drum stopped mid-beat. Every grown-up froze, humming static. Only kids are left to run the city." He looks at his hands. "I forgot how to start the beat. I cannot do it alone."',
       lesson: { v: 'PURPOSE', tip: 'Knowing why you do something gives you courage to begin.', ask: 'Why is your family important to you?' },
       choices: [
         { l: 'Sit and keep the beat with him', res: 'You tap along. Sefu smiles. "Now I remember. I will drum with you!"', give: 'Sefu', spirit: 1, next: 'door' },
@@ -125,12 +149,9 @@ export default {
     },
     fair: {
       th: 'hall', title: 'THE FAIR SHARE', min: 3, skip: 'charades',
-      t: 'Past the door, a basket holds 24 glow berries for the hungry folk of the hall. Six people are waiting. The crew must share fairly.',
+      t: 'Past the door, the hall keeper has a pile of supplies and a pile of puzzles. Fractions, shares, and a tricky trade-off. The crew must figure out what is fair.',
       lesson: { v: 'ECONOMY', tip: 'Sharing fairly means everyone gets the same, or what they truly need.', ask: 'How do you share something when there is not enough?' },
-      ch: { kind: 'math', trait: 'CLEVER', p: [
-        { q: '24 berries shared equally among 6 people. How many each?', o: ['3', '4', '5', '6'], a: 1 },
-        { q: '18 berries shared equally among 3 people. How many each?', o: ['5', '6', '7', '9'], a: 1 }
-      ] },
+      ch: { kind: 'math', trait: 'CLEVER', gen: ['fraction', 'shareRemainder', 'interest', 'area', 'rate'], p: [{}] },
       out: {
         great: 'Everybody gets a fair share and someone starts singing.',
         ok: 'Most folks get a fair share, with a small mix-up.',
@@ -167,7 +188,7 @@ export default {
       next: 'serpent'
     },
     serpent: {
-      th: 'weave', title: 'THE GLITCH SERPENT',
+      meets: ['serpent'], th: 'weave', title: 'THE GLITCH SERPENT',
       t: 'Under the hall, the Weave glows green. A huge Glitch Serpent uncoils from the code, hissing static. Heroes whose weapons are woven can calm it. Everyone answer!',
       ch: { kind: 'fight', trait: 'BRAVE', p: [
         { q: 'The Serpent is made of tangled threads. What helps untangle things?', o: ['Patience', 'Shouting', 'Scissors', 'Giving up'], a: 0, beast: 'GLITCH SERPENT', weak: 'THREAD' },
@@ -181,37 +202,25 @@ export default {
       next: 'trade'
     },
     trade: {
-      th: 'weave', title: 'THE STONE BUILDERS', min: 3, skip: 'r1',
+      th: 'weave', title: 'THE STONE BUILDERS', min: 3, skip: 'prep',
       t: 'A crew of stone builders is stuck behind a broken bridge, with no coins to fix it. They would fight beside you if you help. It costs 10 coins to repair the bridge.',
       lesson: { v: 'UNITY', tip: 'When you help a neighbor, you often gain a friend.', ask: 'Who helped you recently?' },
       choices: [
-        { l: 'Give 10 coins to fix the bridge', res: 'The builders cheer. "We will stand with you!"', coin: -10, give: 'Builder Crew', spirit: 1, next: 'r1' },
-        { l: 'Wish them luck and go on', res: 'The builders wave sadly. Maybe next time.', next: 'r1' }
+        { l: 'Give 10 coins to fix the bridge', res: 'The builders cheer. "We will stand with you!"', coin: -10, give: 'Builder Crew', spirit: 1, next: 'prep' },
+        { l: 'Wish them luck and go on', res: 'The builders wave sadly. Maybe next time.', next: 'prep' }
       ]
-    },
-    r1: { routes: [{ coins: 50, item: 'Kwesi Loan', to: 'repay' }, { missing: 'Kwesi Loan', to: 'prep' }, { to: 'short' }] },
-    repay: {
-      th: 'market', title: 'BABA KWESI GETS HIS 50', noch: true,
-      t: 'You pass Baba Kwesi on the way back. You borrowed 25 and promised 50, and you have it. You hand over 50 coins. He beams. "A crew that keeps its word is rare. I will walk with you to the fight."',
-      on: { coin: -50, take: 'Kwesi Loan', give: 'Kwesi' },
-      lesson: { v: 'FAITH', tip: 'Keeping your word makes people believe in you.', ask: 'When did you keep a promise even though it was hard?' },
-      next: 'prep'
-    },
-    short: {
-      th: 'market', title: 'SHORT ON COINS', noch: true,
-      t: 'Baba Kwesi waits. You owe him 50 coins but you do not have them. He looks sad but kind. "Come back when you can." Your crew feels a little heavy.',
-      on: { take: 'Kwesi Loan', spirit: -1 },
-      lesson: { v: 'ECONOMY', tip: 'If you borrow, plan how to pay it back. Saving early helps.', ask: 'How could you have saved more?' },
-      next: 'prep'
     },
     prep: {
-      th: 'hall', title: 'BEFORE THE SWARM',
-      t: 'The Drum Hall rumbles. The Weave is cracking and dozens of Glitch Beasts are pouring out. You have a moment. You can spend 10 coins to charge the Drum with an Echo Charge, or save every coin for the fight.',
-      lesson: { v: 'PURPOSE', tip: 'Spending on what matters most is a skill.', ask: 'What matters most when you have little?' },
+      th: 'hall', title: 'BEFORE THE SWARM', team: true,
+      t: 'The Drum Hall rumbles. Dozens of Glitch Beasts are pouring out of the Weave. You have one moment. Every hero picks their OWN job, and every job counts. The crew will be stronger for each one chosen!',
+      lesson: { v: 'PURPOSE', tip: 'A team wins when each person picks a different job that fits them.', ask: 'What job do you do best when your family works together?' },
       choices: [
-        { l: 'Buy an Echo Charge (10 coins)', res: 'The Drum hums. It will answer once.', coin: -10, give: 'Echo Charge', next: 'swarm' },
-        { l: 'Save all coins', res: 'Coins can shield the crew. They will matter.', next: 'swarm' }
-      ]
+        { l: 'Charge the Drum (10 coins): the Drum answers once', res: 'You charge the Drum. It hums and waits.', coin: -10, give: 'Echo Charge', perk: 'charge', next: 'swarm' },
+        { l: 'Train hard: your strikes land harder (+3 hits)', res: 'You drill your strikes until they sing.', perk: 'train', next: 'swarm' },
+        { l: 'Guard the crew: fewer beasts get through (3 less)', res: 'You plant yourself in front of the crew.', perk: 'guard', next: 'swarm' },
+        { l: 'Scout the Weave map: find the weak spots (+2 hits)', res: 'You find the beasts weak seams.', perk: 'scout', next: 'swarm' }
+      ],
+      next: 'swarm'
     },
     swarm: {
       th: 'weave', title: 'THE SWARM',
@@ -225,8 +234,35 @@ export default {
       },
       next: 'r_end'
     },
+    bell1: {
+      th: 'market', title: 'THE MARKET BELL', noch: true,
+      t: 'DONG. The market bell rings. Big Mo steps out of the crowd, tapping his wrist. "Ten coins. Bell time." The Core on your weapon hums, waiting.',
+      choices: [
+        { l: 'Pay Big Mo 10 coins', res: 'Big Mo nods. "A pleasure doing business." The Core glows brighter.', coin: -10, next: '__ret' },
+        { l: 'Skip it and hope he does not notice', res: 'The Core flickers and dims. Big Mo narrows his eyes. "Noted."', missed: true, next: 'r_bell' }
+      ]
+    },
+    bell2: {
+      th: 'hall', title: 'LAST BELL', noch: true,
+      t: 'DONG. The bell rings through the Hall. Big Mo is there, arms crossed. "Ten coins, hero. Last bell before the big fight."',
+      choices: [
+        { l: 'Pay Big Mo 10 coins', res: 'He tips an imaginary hat. The Core hums at full power.', coin: -10, next: '__ret' },
+        { l: 'Skip it. The Drum matters more.', res: 'The Core dims. Big Mo shrugs. "Your funeral." He melts into the shadows.', missed: true, next: 'r_bell' }
+      ]
+    },
+    r_bell: { routes: [{ item: 'Dead Core', to: 'collectors' }, { to: '__ret' }] },
+    collectors: {
+      th: 'market', title: 'THE COLLECTORS', noch: true, meets: ['collector'],
+      panels: [{ th: 'market', seed: 33, shake: true, cap: 'HOVER BOOTS. HOOKS. NO SMILES.', layers: [{ k: 'c:collector', x: 6, y: 20, w: 28 }, { k: 'c:collector', x: 38, y: 20, w: 28 }, { k: 'crew', x: 68, y: 55, w: 28 }] }],
+      t: 'Two Collectors drop in on hover boots, hooks swinging. "Big Mo says you missed two bells. The Core comes back with us. Or you pay up, with interest." They tap their hooks together.',
+      lesson: { v: 'FAITH', tip: 'Promises to pay are promises. Breaking them has a cost, even if nobody is looking.', ask: 'What happens to trust when a promise gets skipped?' },
+      choices: [
+        { l: 'Pay 20 coins and get the Core working again', res: 'The Collectors count the coins. "Pleasure." The Core snaps back to life.', coin: -20, fixcore: true, next: '__ret' },
+        { l: 'Let them take it and stand tall', res: 'They yank the Core off and hover away. The crew is lighter, and a little proud.', spirit: -1, next: '__ret' }
+      ]
+    },
     tw_pup: {
-      th: 'market', title: 'A LOST GLOW PUP', noch: true,
+      th: 'market', title: 'A LOST GLOW PUP', noch: true, meets: ['pup'],
       t: 'Something small and glowing tugs at your boot. It is a Glow Pup, a tiny Weave creature that wandered out of the code. It looks lost. Ayo says, "Quick, decide. Hurry up!"',
       lesson: { v: 'UNITY', tip: 'Helping someone small makes the whole crew stronger.', ask: 'When did you help someone who was lost or scared?' },
       choices: [
@@ -243,6 +279,27 @@ export default {
         { l: 'Race through the fizz', res: 'Zap! You make it, a bit singed, but you find 10 coins on the other side.', coin: 10, spirit: -1, next: '__ret' }
       ]
     },
+    tw_tempt: {
+      th: 'market', title: 'A SECRET OFFER', noch: true, team: true, secret: true,
+      t: 'A hooded figure whispers on your own screen only: "Slip 15 coins from the crew pouch. Nobody will know, and I will make sure you get a secret reward." Choose in secret.',
+      lesson: { v: 'FAITH', tip: 'Trust is the most valuable coin a crew has. Once it is spent, it is hard to earn back.', ask: 'Why does trust matter more when nobody is watching?' },
+      choices: [
+        { l: 'Refuse. The crew comes first.', res: 'You shake your head and walk away.', next: '__ret' },
+        { l: 'Take the deal in secret (15 coins disappear)', res: 'The coins slip into your sleeve.', coin: -15, thief: true, next: '__ret' }
+      ],
+      resTaken: 'The hooded figure is gone. Ayo frowns. "The pouch feels lighter. Somebody here made a deal." Nobody says a word.',
+      resNone: 'The hooded figure leaves with nothing. Ayo grins. "Loyal crew. I like it."',
+      next: '__ret'
+    },
+    tw_accuse: {
+      th: 'hall', title: 'THE LIGHT POUCH', noch: true, accuse: true,
+      t: 'Ayo holds up the crew pouch. "It is lighter than it should be. Did someone take coins?" Talk it over, then secretly name who you think it was, or trust the crew. Careful: a wrong accusation hurts everyone.',
+      lesson: { v: 'SELF', tip: 'Accusing someone without proof can hurt a team. Asking questions first is fairer.', ask: 'How do you tell the truth from a fib?' },
+      resCaught: 'It was {name}! The coins come back and the whole crew feels lighter. Honesty brings the glow back.',
+      resWrong: '{name} did nothing wrong. The crew argues and the real shadow keeps quiet. Spirit drops.',
+      resNone: 'The crew decides to trust each other. The pouch stays light, and somebody is smiling in the dark.',
+      next: '__ret'
+    },
     tw_trick: {
       th: 'hall', title: 'AUNTIE STATIC', noch: true,
       t: 'A flickering trickster in a patchwork coat steps out of the shadows. "I am Auntie Static, and I love a good bargain. Ten coins for a Mystery Charm. Could be brilliant. Could be a sock." She winks.',
@@ -255,7 +312,7 @@ export default {
     r_end: { routes: [{ spirit: 4, to: 'end_a' }, { spirit: 2, to: 'end_b' }, { to: 'end_c' }] },
     end_a: {
       th: 'skycity', title: 'THE DRUM SINGS AGAIN', end: 'triumph',
-      t: 'Sefu strikes the Great Drum and the whole city feels it. Lights flicker on. Neighbors step into the streets. The Glitch Beasts become glowing lanterns drifting over the rooftops. Ayo salutes the crew. "You did not just save the Drum. You reminded us how to be a city."'
+      t: 'Sefu strikes the Great Drum and the whole city feels it. Lights flicker on. Neighbors step into the streets. The Glitch Beasts become glowing lanterns drifting over the rooftops. Ayo salutes the crew. "You did not just save the Drum. You reminded us how to be together."'
     },
     end_b: {
       th: 'skycity', title: 'A STEADY BEAT', end: 'cozy',
