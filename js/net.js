@@ -2,7 +2,9 @@
 // (open several tabs of the same browser to play against yourself).
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
-export const LOCAL = new URLSearchParams(location.search).has('local');
+const _q = new URLSearchParams(location.search);
+export const SOLO = _q.has('solo');
+export const LOCAL = _q.has('local') || SOLO;
 
 export async function connect(room, onMsg, onStatus) {
   if (LOCAL) {

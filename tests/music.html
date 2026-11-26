@@ -1,5 +1,7 @@
 <!doctype html><body><pre id=o>running</pre><script type=module>
 import { renderTest } from '/js/music.js';
-const out = {}; for (const m of ['calm','market','night','hall','battle','win']) out[m] = await renderTest(m, 4);
+const out = {};
+for (const m of ['calm','market','night','hall','battle','win']) out[m] = await renderTest(m, 14, 'scene-a');
+out.variants = []; for (const id of ['intro','loan','earn','sefu','serpent','prep']) { const r = await renderTest('market', 6, id); out.variants.push([id, r.key, r.groove]); }
 document.getElementById('o').textContent = JSON.stringify(out); window.DONE = true;
 </script>

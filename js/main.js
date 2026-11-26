@@ -1,5 +1,5 @@
 // Kinship Quest client: screens, input, and sync. Everyone renders from the host's state snapshot.
-import { connect, LOCAL } from './net.js';
+import { connect, LOCAL, SOLO } from './net.js';
 import { Host } from './host.js';
 import { QUESTS, QUEST_LIST, CHAPTER_LENGTHS, CLOCK_LENGTHS, COMING_SOON } from './data/quests.js';
 import { COSTS, CLASSES, CLASS, SKINS, OUTFITS, HAIRS, PATTERNS, ACCESSORIES, GLOWS, QUIRKS, CATCHES, TRAITS, VALUES, VALUE_NAMES, rollHero } from './data/heroes.js';
@@ -138,17 +138,18 @@ function titleScreen() {
   const marching = CLASSES.map((c, i) => `<img class="march" style="animation-delay:${-i * .9}s" src="${spriteURL({ cls: c.id, skin: (i * 2) % 6, hair: i % 6, outfit: i }, 3)}" width="72" alt="">`).join('');
   return `<section class="title">
     <h1 class="logo" aria-label="Kinship Quest"><span class="l1">${[...'KINSHIP'].map((c, i) => `<i style="--i:${i}">${c}</i>`).join('')}</span><span class="l2">${[...'QUEST'].map((c, i) => `<i style="--i:${i + 3}">${c}</i>`).join('')}</span></h1>
-    <p class="sub">A FAMILY ADVENTURE FOR 2 TO 8 HEROES</p>
+    <p class="sub">A FAMILY ADVENTURE FOR 1 TO 8 HEROES</p>
     <div class="march-row" aria-hidden="true">${marching}</div>
     <div class="menu box">
-      <label>YOUR NAME<input id="nameIn" maxlength="14" autocomplete="off" placeholder="TYPE HERE" value="${esc(store.getItem('kq-name') || '')}"></label>
-      <div class="row2">
-        <div>${btn('NEW GAME', 'data-act="new"', 'y big')}<small>Start a room. Share the code.</small></div>
-        <div><label>ROOM CODE<input id="codeIn" maxlength="4" autocomplete="off" placeholder="ABCD" value="${esc(urlRoom)}" class="code"></label>${btn('JOIN GAME', 'data-act="join"', urlRoom ? 'c big pulse' : 'c big')}</div>
+      <label>YOUR NAME<input id="nameIn" maxlength="14" autocomplete="off" placeholder="TYPE HERE" value="${esc(store.getItem('kq-name') || (() => { try { return localStorage.getItem('kq-name'); } catch (e) { return ''; } })() || '')}"></label>
+      <div class="${SOLO ? '' : 'row2'}">
+        <div>${btn(SOLO ? 'START SOLO GAME' : 'NEW GAME', 'data-act="new"', 'y big')}<small>${SOLO ? 'You are the hero. Ayo is your crew.' : 'Start a room. Share the code.'}</small></div>
+        ${SOLO ? '' : `<div><label>ROOM CODE<input id="codeIn" maxlength="4" autocomplete="off" placeholder="ABCD" value="${esc(urlRoom)}" class="code"></label>${btn('JOIN GAME', 'data-act="join"', urlRoom ? 'c big pulse' : 'c big')}</div>`}
       </div>
+      ${SOLO ? '' : `<div class="solorow">${btn('PLAY SOLO', 'data-act="solo"', 'g big')}<small>Just you and Ayo. No room code. Works with no internet.</small></div>`}
       ${sess ? `<div class="cont">${btn('CONTINUE ROOM ' + esc(sess.room), 'data-act="cont"', 'g')}</div>` : ''}
     </div>
-    <p class="foot">NO ACCOUNTS. NO ADS. JUST YOUR FAMILY.${LOCAL ? '<br>PRACTICE MODE: OPEN MORE TABS WITH ?local' : ''}</p>
+    <p class="foot">NO ACCOUNTS. NO ADS. JUST YOUR FAMILY.${SOLO ? '<br>SOLO MODE: JUST YOU AND AYO' : LOCAL ? '<br>PRACTICE MODE: OPEN MORE TABS WITH ?local' : ''}</p>
   </section>`;
 }
 
@@ -184,8 +185,8 @@ function lobbyScreen() {
       <div class="btnrow">${btn(p.ready ? 'READY!' : 'I AM READY', 'data-act="ready"', p.ready ? 'g' : 'y')}</div>
     </div>
     <div class="side">
-      <div class="box pad room"><div class="label">ROOM CODE</div><div class="bigcode">${esc(room)}</div>
-        <div class="btnrow">${btn('COPY INVITE LINK', 'data-act="copy"', 'c small')}</div></div>
+      ${SOLO ? '' : `<div class="box pad room"><div class="label">ROOM CODE</div><div class="bigcode">${esc(room)}</div>
+        <div class="btnrow">${btn('COPY INVITE LINK', 'data-act="copy"', 'c small')}</div></div>`}
       <div class="box pad crew"><div class="label">THE CREW (${S.order.length}/8)</div>
         ${S.order.map(id => { const q = S.players[id]; return `<div class="member ${q.online ? '' : 'away'}">${spriteHTML(q.hero, 52)}<div><b>${esc(q.name)}${id === S.hostId ? ' *' : ''}</b><small>${CLASS[q.hero.cls].name}${q.online ? '' : ' (AWAY)'}</small></div><span class="tag ${q.ready ? 'ok' : ''}">${q.ready ? 'READY' : 'BUILDING'}</span></div>`; }).join('')}
         <p class="note">* HOST</p></div>
@@ -199,7 +200,7 @@ function pickScreen() {
   return `<section class="pick">
     <h2 class="shead">CHOOSE YOUR QUEST</h2>
     <div class="quests">${QUEST_LIST.map(qq => `<button class="quest box ${sel.quest === qq.id ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="sel" data-q="${qq.id}">
-      <img class="qimg" src="${backdropURL(qq.theme, 3)}" alt=""><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></button>`).join('')}${COMING_SOON.map(qq => `<div class="quest box soon"><img class="qimg" src="${backdropURL(qq.theme, 7)}" alt=""><span class="badge">COMING SOON</span><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></div>`).join('')}</div>
+      <img class="qimg" src="${backdropURL(qq.theme, 3)}" alt=""><div class="qbody"><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></button>`).join('')}${COMING_SOON.map(qq => `<div class="quest box soon"><img class="qimg" src="${backdropURL(qq.theme, 7)}" alt=""><div class="qbody"><span class="badge">COMING SOON</span><h3>${esc(qq.name)}</h3><div class="tags">${qq.tags.map(t => `<span>${t}</span>`).join('')}</div><p>${esc(qq.blurb)}</p></div></div>`).join('')}</div>
     <div class="box pad opts">
       <div><div class="label">HOW TO MEASURE LENGTH</div><div class="seg">
         <button class="${!clock ? 'sel' : ''}" ${isHost ? '' : 'disabled'} data-act="mode" data-v="chapters">BY CHAPTERS</button>
@@ -535,6 +536,7 @@ function syncMusic() {
   if (S.phase === 'end') m = S.ending.kind === 'triumph' ? 'win' : 'calm';
   else if (S.phase === 'play') { const sc = scene(); m = sc?.ch && ['fight', 'swarm'].includes(sc.ch.kind) && S.sub !== 'read' ? 'battle' : (MOOD_BY_THEME[sc?.th] || 'calm'); }
   music.setMood(m);
+  music.setScene(room + '|' + (S.phase === 'play' ? S.sceneId : S.phase) + '|' + m);
 }
 
 function render() {
@@ -555,6 +557,7 @@ function render() {
 const actions = {
   new() { const n = $('#nameIn').value.trim(); if (!n) return toast('Type your name first!'); store.setItem('kq-name', n); sfx.start(); start(Array.from({ length: 4 }, () => ROOM_LETTERS[Math.floor(Math.random() * ROOM_LETTERS.length)]).join(''), n, true); },
   join() { const n = $('#nameIn').value.trim(), c = $('#codeIn').value.trim().toUpperCase(); if (!n) return toast('Type your name first!'); if (!/^[A-Z]{4}$/.test(c)) return toast('Room codes are 4 letters.'); store.setItem('kq-name', n); sfx.join(); start(c, n, false); },
+  solo() { const n = $('#nameIn').value.trim(); if (!n) return toast('Type your name first!'); try { localStorage.setItem('kq-name', n); } catch (e) {} sfx.start(); location.href = location.pathname + '?solo'; },
   cont() { const s = loadSession(); if (s) start(s.room, s.name, s.isHost); },
   leave() { if (!S || confirm('Leave this game?')) leave(); },
   mute() { setMuted(!isMuted()); render(); },

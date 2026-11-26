@@ -126,7 +126,7 @@ button:disabled { cursor: not-allowed; }
 .startbox { text-align: center; margin-top: 14px; } .startbox small { display: block; color: var(--muted); }
 
 /* ---- quest pick ---- */
-.shead { font-size: clamp(14px, 3.4vw, 22px); color: var(--yellow); text-align: center; margin: 14px 0 20px; text-shadow: 4px 4px 0 var(--red); }
+.shead { font-size: clamp(14px, 3.4vw, 22px); color: var(--yellow); text-align: center; margin: 14px 0 20px; text-shadow: 2px 2px 0 #3a0f3a; }
 .quests { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 10px; }
 .quest { padding: 0; text-align: left; display: flex; flex-direction: column; color: var(--cream); border: 0; }
 .quest:hover:not(:disabled), .quest.sel { --line: var(--yellow); }
@@ -260,7 +260,8 @@ button:disabled { cursor: not-allowed; }
 .dice3 .die,.die.set{color:#0d0a1f;background:#fff7e0;text-align:center;font-family:'Press Start 2P',monospace}
 
 .quest.soon { position: relative; opacity: .6; filter: saturate(.55); cursor: default; }
-.quest.soon .badge { position: absolute; top: 8px; right: 8px; font: 8px 'Press Start 2P'; background: var(--pink); color: var(--ink); padding: 6px 8px; z-index: 2; }
+.quest.soon .badge { position: static; display: inline-block; margin: 0 0 8px; font: 8px 'Press Start 2P'; background: var(--pink); color: var(--ink); padding: 6px 8px; }
+
 
 /* v4 */
 .txt { width: 100%; box-sizing: border-box; font-family: 'VT323', monospace; font-size: 22px; padding: 6px 8px; background: #0d0a1f; color: #fff7e0; border: 2px solid #5b4aa8; }
@@ -322,3 +323,5 @@ body.shake { animation: bodyshake .4s steps(2); }
 .sw.lock, .chipbtn.lock { opacity: .55; position: relative; } .sw.lock { font: 9px 'Press Start 2P', monospace; color: #fff; text-shadow: 1px 1px 0 #000; }
 /* kente-inspired trim */
 #hud { border-image: repeating-linear-gradient(90deg, #e0392f 0 14px, #ffd23f 14px 28px, #2fb25a 28px 42px, #0d0a1f 42px 56px) 4; border-bottom: 4px solid; }
+
+.solorow { margin-top: 14px; text-align: center; } .solorow small { display: block; margin-top: 6px; }
